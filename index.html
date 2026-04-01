@@ -1,0 +1,1808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARTEMIS II - MISSION CONTROL DASHBOARD</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Courier+Prime:wght@400;700&display=swap');
+
+  :root {
+    --nasa-red: #FC3D21;
+    --nasa-blue: #0B3D91;
+    --nasa-gold: #D4A843;
+    --terminal-green: #33FF33;
+    --terminal-amber: #FFB000;
+    --panel-bg: #0a0e14;
+    --panel-border: #1a3a5c;
+    --text-primary: #e8d5b0;
+    --text-dim: #7a8a6a;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #050810;
+    color: var(--text-primary);
+    font-family: 'Courier Prime', 'Courier New', monospace;
+    overflow-x: hidden;
+    min-height: 100vh;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none;
+    z-index: 9999;
+    background: repeating-linear-gradient(0deg, rgba(0,0,0,0.15) 0px, rgba(0,0,0,0.15) 1px, transparent 1px, transparent 3px);
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none;
+    z-index: 9998;
+    background: radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.6) 100%);
+  }
+
+  /* ─── HEADER ─── */
+  .mission-header {
+    background: linear-gradient(180deg, #0B3D91 0%, #061d47 100%);
+    border-bottom: 3px solid var(--nasa-red);
+    padding: 12px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+  }
+
+  .mission-header::after {
+    content: '';
+    position: absolute;
+    bottom: -6px;
+    left: 0; right: 0;
+    height: 2px;
+    background: var(--nasa-gold);
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .nasa-logo {
+    width: 72px;
+    height: 72px;
+    flex-shrink: 0;
+  }
+
+  .nasa-logo img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: drop-shadow(0 0 6px rgba(255,255,255,0.2));
+  }
+
+  .mission-title h1 {
+    font-family: 'Orbitron', monospace;
+    font-size: 28px;
+    font-weight: 900;
+    letter-spacing: 8px;
+    color: #fff;
+    text-shadow: 0 0 20px rgba(255,255,255,0.3);
+  }
+
+  .mission-title .subtitle {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 4px;
+    color: var(--nasa-gold);
+    margin-top: 4px;
+  }
+
+  .header-right {
+    text-align: right;
+    font-family: 'Share Tech Mono', monospace;
+  }
+
+  .met-clock {
+    font-size: 28px;
+    color: var(--terminal-green);
+    text-shadow: 0 0 10px rgba(51,255,51,0.5);
+    letter-spacing: 3px;
+  }
+
+  .met-label {
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--terminal-amber);
+    margin-bottom: 4px;
+  }
+
+  .utc-time {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+
+  /* ─── STATUS BAR ─── */
+  .status-bar {
+    background: #0c1018;
+    border-bottom: 1px solid var(--panel-border);
+    padding: 8px 32px;
+    display: flex;
+    gap: 32px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    overflow-x: auto;
+  }
+
+  .status-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--terminal-green);
+    box-shadow: 0 0 6px var(--terminal-green);
+    animation: pulse-dot 2s ease-in-out infinite;
+  }
+
+  .status-dot.amber { background: var(--terminal-amber); box-shadow: 0 0 6px var(--terminal-amber); }
+  .status-dot.red { background: var(--nasa-red); box-shadow: 0 0 6px var(--nasa-red); }
+  .status-label { color: var(--text-dim); }
+  .status-value { color: var(--terminal-green); }
+
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* ─── DASHBOARD GRID ─── */
+  .dashboard {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto auto auto;
+    gap: 0;
+  }
+
+  .panel {
+    border: 1px solid var(--panel-border);
+    background: var(--panel-bg);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .panel-header {
+    background: linear-gradient(90deg, rgba(11,61,145,0.4), transparent);
+    border-bottom: 1px solid var(--panel-border);
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-family: 'Orbitron', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    color: var(--nasa-gold);
+  }
+
+  .panel-header .panel-id {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+  }
+
+  .panel-header .live-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    color: var(--nasa-red);
+    letter-spacing: 1px;
+    border: 1px solid var(--nasa-red);
+    padding: 2px 8px;
+    margin-left: 10px;
+  }
+
+  .live-badge .blink {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--nasa-red);
+    animation: pulse-dot 1s ease-in-out infinite;
+  }
+
+  /* ─── TRACKING MAP ─── */
+  .tracking-panel { grid-column: 1 / -1; }
+
+  .map-container {
+    position: relative;
+    width: 100%;
+    height: 420px;
+    background: #060a10;
+    overflow: hidden;
+  }
+
+  .map-container canvas { width: 100%; height: 100%; }
+
+  .map-legend {
+    position: absolute;
+    bottom: 12px;
+    left: 16px;
+    display: flex;
+    gap: 16px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    background: rgba(0,0,0,0.7);
+    padding: 6px 12px;
+    border: 1px solid var(--panel-border);
+  }
+
+  .legend-item { display: flex; align-items: center; gap: 6px; color: var(--text-dim); }
+  .legend-swatch { width: 12px; height: 3px; }
+
+  .map-telemetry {
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    background: rgba(0,0,0,0.8);
+    border: 1px solid var(--panel-border);
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .telemetry-row { display: flex; justify-content: space-between; gap: 20px; }
+  .telemetry-label { color: var(--text-dim); }
+  .telemetry-value { color: var(--terminal-green); text-align: right; }
+
+  .map-phase-label {
+    position: absolute;
+    top: 12px;
+    left: 16px;
+    font-family: 'Orbitron', monospace;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--terminal-amber);
+    text-shadow: 0 0 10px rgba(255,176,0,0.4);
+    background: rgba(0,0,0,0.7);
+    padding: 6px 14px;
+    border: 1px solid var(--terminal-amber);
+    letter-spacing: 2px;
+  }
+
+  /* ─── TIMELINE ─── */
+  .timeline-panel { overflow-y: auto; max-height: 520px; }
+  .timeline-panel::-webkit-scrollbar { width: 6px; }
+  .timeline-panel::-webkit-scrollbar-track { background: var(--panel-bg); }
+  .timeline-panel::-webkit-scrollbar-thumb { background: var(--panel-border); border-radius: 3px; }
+
+  .timeline { padding: 16px; position: relative; }
+
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 28px;
+    top: 0; bottom: 0;
+    width: 2px;
+    background: var(--panel-border);
+  }
+
+  .timeline-day { margin-bottom: 24px; position: relative; cursor: pointer; }
+
+  .day-marker {
+    position: absolute;
+    left: 18px; top: 0;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    border: 2px solid var(--nasa-gold);
+    background: var(--panel-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 8px;
+    color: var(--nasa-gold);
+    z-index: 2;
+    transition: all 0.3s;
+  }
+
+  .timeline-day.active .day-marker {
+    background: var(--nasa-gold);
+    color: #000;
+    box-shadow: 0 0 12px var(--nasa-gold);
+  }
+
+  .timeline-day.completed .day-marker {
+    background: var(--terminal-green);
+    border-color: var(--terminal-green);
+    color: #000;
+  }
+
+  .day-content {
+    margin-left: 52px;
+    padding: 8px 14px;
+    border: 1px solid transparent;
+    transition: all 0.3s;
+  }
+
+  .timeline-day:hover .day-content,
+  .timeline-day.active .day-content {
+    border-color: var(--panel-border);
+    background: rgba(11,61,145,0.1);
+  }
+
+  .day-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--nasa-gold);
+    letter-spacing: 2px;
+    margin-bottom: 4px;
+  }
+
+  .day-date {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+  }
+
+  .day-events { display: none; flex-direction: column; gap: 6px; margin-top: 8px; }
+  .timeline-day.active .day-events { display: flex; }
+
+  .event { display: flex; align-items: flex-start; gap: 8px; font-size: 12px; line-height: 1.5; padding: 4px 0; }
+
+  .event-time {
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--terminal-amber);
+    font-size: 10px;
+    min-width: 58px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .event-desc { color: var(--text-primary); font-size: 11px; }
+
+  .event-tag {
+    display: inline-block;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 8px;
+    letter-spacing: 1px;
+    padding: 1px 6px;
+    margin-left: 6px;
+    border: 1px solid;
+    vertical-align: middle;
+  }
+
+  .tag-critical { color: var(--nasa-red); border-color: var(--nasa-red); }
+  .tag-nominal { color: var(--terminal-green); border-color: var(--terminal-green); }
+  .tag-science { color: #6db3f2; border-color: #6db3f2; }
+
+  /* ─── CREW PROFILES ─── */
+  .crew-panel { overflow-y: auto; max-height: 520px; }
+
+  .crew-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--panel-border);
+    padding: 1px;
+  }
+
+  .crew-card {
+    background: var(--panel-bg);
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .crew-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 3px; height: 100%;
+    background: var(--nasa-red);
+    transition: width 0.3s;
+  }
+
+  .crew-card:hover::before, .crew-card.active::before { width: 100%; opacity: 0.05; }
+  .crew-card:hover, .crew-card.active { background: rgba(11,61,145,0.15); }
+
+  .crew-avatar {
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    border: 2px solid var(--nasa-gold);
+    background: #1a2a3a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Orbitron', monospace;
+    font-size: 18px;
+    font-weight: 900;
+    color: var(--nasa-gold);
+    margin-bottom: 10px;
+    position: relative;
+  }
+
+  .crew-avatar::after {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: 50%;
+    border: 1px solid rgba(212,168,67,0.3);
+  }
+
+  .crew-name {
+    font-family: 'Orbitron', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: #fff;
+    margin-bottom: 2px;
+  }
+
+  .crew-role {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--terminal-amber);
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+
+  .crew-bio { font-size: 10px; line-height: 1.6; color: var(--text-dim); display: none; }
+  .crew-card.active .crew-bio { display: block; }
+
+  .crew-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    margin-top: 8px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+  }
+
+  .crew-stat-label { color: var(--text-dim); }
+  .crew-stat-value { color: var(--terminal-green); text-align: right; }
+
+  /* ─── LIVE DATA PANELS ─── */
+  .live-data-row {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0;
+    border-top: 2px solid var(--nasa-gold);
+  }
+
+  .data-feed-panel {
+    border: 1px solid var(--panel-border);
+    background: #0c1220;
+  }
+
+  .data-feed-panel .feed-content {
+    padding: 12px 16px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+  }
+
+  .feed-item {
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(26,58,92,0.5);
+  }
+
+  .feed-item:last-child { border-bottom: none; }
+
+  .feed-item .feed-time {
+    color: var(--terminal-amber);
+    font-size: 9px;
+    letter-spacing: 1px;
+  }
+
+  .feed-item .feed-text {
+    color: var(--text-primary);
+    font-size: 11px;
+    margin-top: 2px;
+    line-height: 1.5;
+  }
+
+  .feed-item .feed-type {
+    display: inline-block;
+    font-size: 8px;
+    padding: 1px 6px;
+    border: 1px solid;
+    margin-left: 4px;
+    letter-spacing: 1px;
+  }
+
+  .apod-container {
+    padding: 12px 16px;
+    text-align: center;
+  }
+
+  .apod-container img {
+    max-width: 100%;
+    max-height: 200px;
+    border: 1px solid var(--panel-border);
+    margin-bottom: 8px;
+  }
+
+  .apod-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 10px;
+    color: var(--nasa-gold);
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+  }
+
+  .apod-desc {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    color: var(--text-dim);
+    line-height: 1.5;
+    max-height: 60px;
+    overflow: hidden;
+  }
+
+  .neo-list {
+    padding: 12px 16px;
+    font-family: 'Share Tech Mono', monospace;
+    max-height: 280px;
+    overflow-y: auto;
+  }
+
+  .neo-item {
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(26,58,92,0.3);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .neo-name { color: var(--text-primary); font-size: 10px; }
+  .neo-dist { color: var(--terminal-green); font-size: 10px; }
+  .neo-hazard { color: var(--nasa-red); font-size: 8px; border: 1px solid var(--nasa-red); padding: 1px 4px; }
+  .neo-safe { color: var(--terminal-green); font-size: 8px; border: 1px solid var(--terminal-green); padding: 1px 4px; }
+
+  .loading-text {
+    color: var(--text-dim);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    padding: 20px 16px;
+    text-align: center;
+    animation: pulse-dot 1.5s ease-in-out infinite;
+  }
+
+  /* ─── MISSION PARAMS FOOTER ─── */
+  .mission-params {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 1px;
+    background: var(--panel-border);
+    border-top: 2px solid var(--nasa-red);
+  }
+
+  .param-card {
+    background: var(--panel-bg);
+    padding: 14px 16px;
+    text-align: center;
+  }
+
+  .param-value {
+    font-family: 'Orbitron', monospace;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--terminal-green);
+    text-shadow: 0 0 8px rgba(51,255,51,0.3);
+  }
+
+  .param-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+
+  @keyframes flicker {
+    0%, 100% { opacity: 1; }
+    92% { opacity: 1; }
+    93% { opacity: 0.8; }
+    94% { opacity: 1; }
+    96% { opacity: 0.9; }
+    97% { opacity: 1; }
+  }
+
+  .flicker { animation: flicker 4s infinite; }
+
+  /* ─── DATA SOURCE FOOTER ─── */
+  .data-sources {
+    grid-column: 1 / -1;
+    background: #060810;
+    border-top: 1px solid var(--panel-border);
+    padding: 8px 32px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .data-sources a {
+    color: var(--nasa-gold);
+    text-decoration: none;
+  }
+
+  .data-sources a:hover { text-decoration: underline; }
+
+  @media (max-width: 900px) {
+    .dashboard { grid-template-columns: 1fr; }
+    .live-data-row { grid-template-columns: 1fr; }
+    .mission-params { grid-template-columns: repeat(3, 1fr); }
+    .crew-grid { grid-template-columns: 1fr; }
+    .mission-header { flex-direction: column; gap: 12px; text-align: center; }
+    .header-right { text-align: center; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════ HEADER ═══════════ -->
+<header class="mission-header">
+  <div class="header-left">
+    <div class="nasa-logo">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/NASA_logo.svg/1224px-NASA_logo.svg.png" alt="NASA" onerror="this.src='https://www.nasa.gov/wp-content/themes/flavor/images/nasa-logo.svg'">
+    </div>
+    <div class="mission-title">
+      <h1>ARTEMIS II</h1>
+      <div class="subtitle">CREWED LUNAR FLYBY MISSION &mdash; SLS / ORION MPCV &mdash; <span id="launchWindow">NET LOADING...</span></div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="met-label">MISSION ELAPSED TIME</div>
+    <div class="met-clock flicker" id="metClock">000:00:00:00</div>
+    <div class="utc-time" id="utcTime">UTC 2026-091T00:00:00Z</div>
+  </div>
+</header>
+
+<!-- ═══════════ STATUS BAR ═══════════ -->
+<div class="status-bar">
+  <div class="status-item">
+    <div class="status-dot"></div>
+    <span class="status-label">COMM LINK</span>
+    <span class="status-value">NOMINAL</span>
+  </div>
+  <div class="status-item">
+    <div class="status-dot"></div>
+    <span class="status-label">SLS CORE</span>
+    <span class="status-value">GO</span>
+  </div>
+  <div class="status-item">
+    <div class="status-dot"></div>
+    <span class="status-label">ORION MPCV</span>
+    <span class="status-value">GO</span>
+  </div>
+  <div class="status-item">
+    <div class="status-dot amber"></div>
+    <span class="status-label">LAUNCH</span>
+    <span class="status-value" style="color:var(--terminal-amber)">POLLING...</span>
+  </div>
+  <div class="status-item">
+    <div class="status-dot"></div>
+    <span class="status-label">ESM</span>
+    <span class="status-value">NOMINAL</span>
+  </div>
+  <div class="status-item">
+    <div class="status-dot"></div>
+    <span class="status-label">CREW</span>
+    <span class="status-value">4/4 GO</span>
+  </div>
+  <div class="status-item">
+    <div class="status-dot"></div>
+    <span class="status-label">TRACKING</span>
+    <span class="status-value">DSN LOCKED</span>
+  </div>
+  <div class="status-item" id="apiStatusItem">
+    <div class="status-dot" id="apiStatusDot"></div>
+    <span class="status-label">NASA API</span>
+    <span class="status-value" id="apiStatusValue">CONNECTING</span>
+  </div>
+</div>
+
+<!-- ═══════════ MAIN DASHBOARD ═══════════ -->
+<div class="dashboard">
+
+  <!-- TRACKING MAP -->
+  <div class="panel tracking-panel">
+    <div class="panel-header">
+      <span>TRAJECTORY / TRACKING <span class="live-badge"><span class="blink"></span>LIVE</span></span>
+      <span class="panel-id">DSP-TRK-001 | FEED: LL2 + JPL HORIZONS + DONKI + NeoWs</span>
+    </div>
+    <div class="map-container">
+      <canvas id="trackingCanvas"></canvas>
+      <div class="map-phase-label" id="phaseLabel">PHASE: TRANS-LUNAR INJECTION</div>
+      <div class="map-telemetry" id="telemetryBox">
+        <div class="telemetry-row"><span class="telemetry-label">ALT</span><span class="telemetry-value" id="tAlt">185 km</span></div>
+        <div class="telemetry-row"><span class="telemetry-label">VEL</span><span class="telemetry-value" id="tVel">10,840 m/s</span></div>
+        <div class="telemetry-row"><span class="telemetry-label">RANGE</span><span class="telemetry-value" id="tRange">0 km</span></div>
+        <div class="telemetry-row"><span class="telemetry-label">INCL</span><span class="telemetry-value" id="tIncl">28.5&deg;</span></div>
+        <div class="telemetry-row"><span class="telemetry-label">PHASE</span><span class="telemetry-value" id="tPhase">TLI BURN</span></div>
+        <div class="telemetry-row"><span class="telemetry-label">MOON&ang;</span><span class="telemetry-value" id="tMoonAngle">--</span></div>
+      </div>
+      <div class="map-legend">
+        <div class="legend-item"><div class="legend-swatch" style="background:var(--terminal-green)"></div>TRAJECTORY</div>
+        <div class="legend-item"><div class="legend-swatch" style="background:var(--nasa-gold)"></div>PLANNED PATH</div>
+        <div class="legend-item"><div class="legend-swatch" style="background:#555"></div>LUNAR ORBIT</div>
+        <div class="legend-item"><div class="legend-swatch" style="background:var(--nasa-red)"></div>ORION MPCV</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TIMELINE -->
+  <div class="panel timeline-panel">
+    <div class="panel-header">
+      <span>MISSION TIMELINE</span>
+      <span class="panel-id">DSP-TML-002</span>
+    </div>
+    <div class="timeline" id="timeline"></div>
+  </div>
+
+  <!-- CREW -->
+  <div class="panel crew-panel">
+    <div class="panel-header">
+      <span>CREW MANIFEST</span>
+      <span class="panel-id">DSP-CRW-003</span>
+    </div>
+    <div class="crew-grid" id="crewGrid"></div>
+  </div>
+
+  <!-- LIVE DATA FEEDS ROW -->
+  <div class="live-data-row">
+    <!-- SPACE WEATHER (DONKI) -->
+    <div class="panel data-feed-panel">
+      <div class="panel-header">
+        <span>SPACE WEATHER <span class="live-badge"><span class="blink"></span>LIVE</span></span>
+        <span class="panel-id">DONKI FEED</span>
+      </div>
+      <div class="feed-content" id="spaceWeatherFeed">
+        <div class="loading-text">CONNECTING TO DONKI...</div>
+      </div>
+    </div>
+
+    <!-- APOD -->
+    <div class="panel data-feed-panel">
+      <div class="panel-header">
+        <span>ASTRONOMY PHOTO <span class="live-badge"><span class="blink"></span>LIVE</span></span>
+        <span class="panel-id">NASA APOD API</span>
+      </div>
+      <div class="apod-container" id="apodContainer">
+        <div class="loading-text">FETCHING APOD...</div>
+      </div>
+    </div>
+
+    <!-- NEAR EARTH OBJECTS -->
+    <div class="panel data-feed-panel">
+      <div class="panel-header">
+        <span>NEAR-EARTH OBJECTS <span class="live-badge"><span class="blink"></span>LIVE</span></span>
+        <span class="panel-id">NeoWs API</span>
+      </div>
+      <div class="neo-list" id="neoList">
+        <div class="loading-text">QUERYING NeoWs...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MISSION PARAMS -->
+  <div class="mission-params">
+    <div class="param-card">
+      <div class="param-value">10.5</div>
+      <div class="param-label">DURATION (DAYS)</div>
+    </div>
+    <div class="param-card">
+      <div class="param-value">384,400</div>
+      <div class="param-label">LUNAR DIST (KM)</div>
+    </div>
+    <div class="param-card">
+      <div class="param-value">8,800</div>
+      <div class="param-label">SLS THRUST (kN)</div>
+    </div>
+    <div class="param-card">
+      <div class="param-value">39.5</div>
+      <div class="param-label">RE-ENTRY (km/s)</div>
+    </div>
+    <div class="param-card">
+      <div class="param-value">26,000</div>
+      <div class="param-label">ORION MASS (KG)</div>
+    </div>
+    <div class="param-card">
+      <div class="param-value">4</div>
+      <div class="param-label">CREW SIZE</div>
+    </div>
+  </div>
+
+  <!-- DATA SOURCES ATTRIBUTION -->
+  <div class="data-sources">
+    <span>LIVE FEEDS: <a href="https://ll.thespacedevs.com" target="_blank">Launch Library 2</a> | <a href="https://api.nasa.gov" target="_blank">NASA API</a> | <a href="https://ssd-api.jpl.nasa.gov/doc/horizons.html" target="_blank">JPL HORIZONS</a> | <a href="https://ccmc.gsfc.nasa.gov/tools/DONKI/" target="_blank">DONKI</a> | <a href="https://www.nasa.gov/missions/artemis/artemis-2/track-nasas-artemis-ii-mission-in-real-time/" target="_blank">AROW</a></span>
+    <span id="lastUpdate">LAST API POLL: --</span>
+  </div>
+</div>
+
+<script>
+// ═══════════ CONFIG ═══════════
+// All API calls route through local server.js proxy — no CORS issues
+const API_BASE = window.location.origin;
+
+// Will be overwritten by live API data
+let LAUNCH_EPOCH = null;
+let launchStatus = 'FETCHING';
+let launchStatusCode = null; // e.g. 1=Go, 2=TBD, 3=Success, 4=Failure, 6=In Flight, 7=Partial Failure
+const MISSION_DURATION_MS = 10.5 * 24 * 3600 * 1000;
+
+let apiConnected = false;
+let moonEphemeris = null;
+let ll2Data = null;
+
+// ═══════════ LAUNCH LIBRARY 2 — LIVE LAUNCH DATA ═══════════
+async function fetchLaunchData() {
+  try {
+    // Search for Artemis II by name in upcoming and recent launches
+    const res = await fetch(`${API_BASE}/api/launch`);
+    if (!res.ok) throw new Error(`LL2 HTTP ${res.status}`);
+    const data = await res.json();
+
+    // Find the Artemis II launch
+    const artemis = data.results?.find(l =>
+      l.name?.toLowerCase().includes('artemis') &&
+      (l.name?.toLowerCase().includes('ii') || l.name?.toLowerCase().includes('2'))
+    );
+
+    if (artemis) {
+      ll2Data = artemis;
+      LAUNCH_EPOCH = new Date(artemis.net); // NET = No Earlier Than
+      launchStatusCode = artemis.status?.id;
+      launchStatus = artemis.status?.abbrev || artemis.status?.name || 'UNKNOWN';
+
+      // Update status bar with live launch status
+      updateLaunchStatusUI(artemis);
+      console.log(`[LL2] Artemis II NET: ${artemis.net} | Status: ${launchStatus}`);
+      return true;
+    } else {
+      throw new Error('Artemis II not found in LL2 results');
+    }
+  } catch (err) {
+    console.warn('[LL2] Launch Library 2 fetch failed:', err.message);
+    // Fallback: try alternative endpoint
+    return await fetchLaunchDataFallback();
+  }
+}
+
+async function fetchLaunchDataFallback() {
+  try {
+    // Try the upcoming launches endpoint
+    const res = await fetch(`${API_BASE}/api/launch/upcoming`);
+    if (!res.ok) throw new Error(`LL2 fallback HTTP ${res.status}`);
+    const data = await res.json();
+
+    const artemis = data.results?.find(l =>
+      l.name?.toLowerCase().includes('artemis') &&
+      (l.name?.toLowerCase().includes('ii') || l.name?.toLowerCase().includes('2'))
+    );
+
+    if (artemis) {
+      ll2Data = artemis;
+      LAUNCH_EPOCH = new Date(artemis.net);
+      launchStatusCode = artemis.status?.id;
+      launchStatus = artemis.status?.abbrev || artemis.status?.name || 'UNKNOWN';
+      updateLaunchStatusUI(artemis);
+      return true;
+    }
+
+    // If not in upcoming, try previous (already launched)
+    const res2 = await fetch(`${API_BASE}/api/launch/previous`);
+    if (res2.ok) {
+      const data2 = await res2.json();
+      const artemis2 = data2.results?.find(l =>
+        l.name?.toLowerCase().includes('artemis') &&
+        (l.name?.toLowerCase().includes('ii') || l.name?.toLowerCase().includes('2'))
+      );
+      if (artemis2) {
+        ll2Data = artemis2;
+        LAUNCH_EPOCH = new Date(artemis2.net);
+        launchStatusCode = artemis2.status?.id;
+        launchStatus = artemis2.status?.abbrev || 'LAUNCHED';
+        updateLaunchStatusUI(artemis2);
+        return true;
+      }
+    }
+
+    throw new Error('Artemis II not found');
+  } catch (err) {
+    console.warn('[LL2] All launch data fetches failed:', err.message);
+    // No hardcoded fallback — show unknown state
+    launchStatus = 'NO DATA';
+    updateLaunchStatusUI(null);
+    return false;
+  }
+}
+
+function updateLaunchStatusUI(launch) {
+  const icpsDot = document.querySelector('.status-bar .status-item:nth-child(4) .status-dot');
+  const icpsVal = document.querySelector('.status-bar .status-item:nth-child(4) .status-value');
+
+  if (!launch) {
+    icpsVal.textContent = 'NO FEED';
+    return;
+  }
+
+  // Map LL2 status codes to UI
+  // 1=Go, 2=TBD, 3=Success, 4=Failure, 5=Hold, 6=In Flight, 7=Partial Failure, 8=TBC
+  const statusMap = {
+    1: { text: 'GO FOR LAUNCH', color: 'var(--terminal-green)', dot: '' },
+    2: { text: 'TBD', color: 'var(--terminal-amber)', dot: 'amber' },
+    3: { text: 'SUCCESS', color: 'var(--terminal-green)', dot: '' },
+    4: { text: 'FAILURE', color: 'var(--nasa-red)', dot: 'red' },
+    5: { text: 'HOLD', color: 'var(--terminal-amber)', dot: 'amber' },
+    6: { text: 'IN FLIGHT', color: 'var(--terminal-green)', dot: '' },
+    7: { text: 'PARTIAL FAIL', color: 'var(--nasa-red)', dot: 'red' },
+    8: { text: 'TBC', color: 'var(--terminal-amber)', dot: 'amber' },
+  };
+
+  const s = statusMap[launchStatusCode] || { text: launchStatus, color: 'var(--terminal-amber)', dot: 'amber' };
+
+  // Update ICPS status to show launch status
+  icpsVal.textContent = s.text;
+  icpsVal.style.color = s.color;
+  if (s.dot) icpsDot.className = `status-dot ${s.dot}`;
+  else icpsDot.className = 'status-dot';
+
+  // Update window title with status
+  document.title = `ARTEMIS II — ${s.text}`;
+
+  // Update launch window display
+  const windowEl = document.getElementById('launchWindow');
+  if (windowEl && launch.window_start && launch.window_end) {
+    const wStart = new Date(launch.window_start);
+    const wEnd = new Date(launch.window_end);
+    windowEl.textContent = `WINDOW: ${wStart.toISOString().substring(11,16)} - ${wEnd.toISOString().substring(11,16)} UTC`;
+  } else if (windowEl && launch.net) {
+    const net = new Date(launch.net);
+    windowEl.textContent = `NET: ${net.toISOString().replace('T',' ').substring(0,16)} UTC`;
+  }
+
+  // Re-render timeline with live status
+  renderTimeline();
+}
+
+// ═══════════ CREW DATA ═══════════
+const CREW = [
+  {
+    initials: 'RW', name: 'REID WISEMAN', role: 'COMMANDER',
+    rank: 'CAPT, USN', agency: 'NASA',
+    missions: 'ISS EXP 41', hours: '165 DAYS',
+    evas: '2 (13h 02m)', selection: 'CLASS 2009',
+    bio: 'U.S. Navy test pilot. Flew F/A-18 combat missions. Selected as NASA astronaut in 2009. Veteran of ISS Expedition 41. Named commander of Artemis II, the first crewed lunar mission since Apollo 17.'
+  },
+  {
+    initials: 'VG', name: 'VICTOR GLOVER', role: 'PILOT',
+    rank: 'CAPT, USN', agency: 'NASA',
+    missions: 'CREW-1 / ISS EXP 64', hours: '167 DAYS',
+    evas: '4 (26h 07m)', selection: 'CLASS 2013',
+    bio: 'U.S. Navy fighter pilot and test pilot. Flew aboard SpaceX Crew Dragon on Crew-1 mission. Will become the first African American to fly on a lunar mission.'
+  },
+  {
+    initials: 'CH', name: 'CHRISTINA KOCH', role: 'MISSION SPECIALIST',
+    rank: 'CIVILIAN', agency: 'NASA',
+    missions: 'ISS EXP 59-61', hours: '328 DAYS',
+    evas: '6 (42h 15m)', selection: 'CLASS 2013',
+    bio: 'Electrical engineer and physicist. Holds the record for longest single spaceflight by a woman (328 days). First all-female spacewalk. Will be the first woman to fly beyond low Earth orbit.'
+  },
+  {
+    initials: 'JH', name: 'JEREMY HANSEN', role: 'MISSION SPECIALIST',
+    rank: 'COL, RCAF', agency: 'CSA',
+    missions: 'FIRST FLIGHT', hours: 'N/A',
+    evas: 'N/A', selection: 'CSA 2009',
+    bio: 'Royal Canadian Air Force fighter pilot. CF-18 pilot. Selected by Canadian Space Agency in 2009. Will become the first Canadian and first non-American to fly on a lunar mission.'
+  }
+];
+
+// ═══════════ TIMELINE DATA ═══════════
+const TIMELINE = [
+  {
+    day: 0, title: 'LAUNCH DAY', date: '2026-04-01 | L+00:00:00',
+    events: [
+      { time: 'T-00:10', desc: 'Final poll — all stations GO', tag: 'CRITICAL' },
+      { time: 'T-00:00', desc: 'SLS Block 1 ignition, LC-39B, KSC', tag: 'CRITICAL' },
+      { time: 'T+00:02', desc: 'SRB separation — 3.6 million lbs thrust', tag: 'NOMINAL' },
+      { time: 'T+00:08', desc: 'Core stage MECO, stage separation', tag: 'NOMINAL' },
+      { time: 'T+00:18', desc: 'ICPS single-engine burn — parking orbit 185 km', tag: 'NOMINAL' },
+      { time: 'T+01:30', desc: 'Systems checkout in parking orbit', tag: 'NOMINAL' },
+      { time: 'T+01:57', desc: 'TLI burn — ICPS pushes Orion toward the Moon', tag: 'CRITICAL' },
+      { time: 'T+02:05', desc: 'ICPS separation — Orion free-flight begins', tag: 'NOMINAL' },
+    ]
+  },
+  { day: 1, title: 'OUTBOUND COAST', date: '2026-04-02 | L+01:00:00', events: [
+    { time: 'MET 04h', desc: 'First mid-course correction burn (OMS-1)', tag: 'NOMINAL' },
+    { time: 'MET 08h', desc: 'Crew cabin pressure check and suit doff', tag: 'NOMINAL' },
+    { time: 'MET 12h', desc: 'Star tracker calibration and nav update', tag: 'SCIENCE' },
+    { time: 'MET 18h', desc: 'Crew sleep period — first rest cycle', tag: 'NOMINAL' },
+  ]},
+  { day: 2, title: 'DEEP SPACE TRANSIT', date: '2026-04-03 | L+02:00:00', events: [
+    { time: 'MET 30h', desc: 'Systems health check — all subsystems nominal', tag: 'NOMINAL' },
+    { time: 'MET 36h', desc: 'Mid-course correction burn 2 (OMS-2)', tag: 'NOMINAL' },
+    { time: 'MET 40h', desc: 'Radiation environment monitoring begins', tag: 'SCIENCE' },
+    { time: 'MET 44h', desc: 'Crew exercise period and medical checks', tag: 'NOMINAL' },
+  ]},
+  { day: 3, title: 'OUTBOUND TRANSIT', date: '2026-04-04 | L+03:00:00', events: [
+    { time: 'MET 54h', desc: 'Orion passes 200,000 km from Earth', tag: 'NOMINAL' },
+    { time: 'MET 60h', desc: 'Communication handoff: TDRS to DSN', tag: 'NOMINAL' },
+    { time: 'MET 66h', desc: 'Crew photo/video session — Earth & Moon views', tag: 'SCIENCE' },
+    { time: 'MET 70h', desc: 'Navigation state update via DSN tracking', tag: 'NOMINAL' },
+  ]},
+  { day: 4, title: 'LUNAR APPROACH', date: '2026-04-05 | L+04:00:00', events: [
+    { time: 'MET 80h', desc: 'Lunar gravity influence begins', tag: 'NOMINAL' },
+    { time: 'MET 88h', desc: 'Approach correction burn (OMS-3)', tag: 'NOMINAL' },
+    { time: 'MET 92h', desc: 'Far-side communication blackout prep', tag: 'CRITICAL' },
+    { time: 'MET 95h', desc: 'Farside flyby trajectory confirmed', tag: 'CRITICAL' },
+  ]},
+  { day: 5, title: 'LUNAR FLYBY', date: '2026-04-06 | L+05:00:00', events: [
+    { time: 'MET 100h', desc: 'CLOSEST APPROACH — ~130 km above lunar surface', tag: 'CRITICAL' },
+    { time: 'MET 100h', desc: 'Farside communication blackout (~30 min)', tag: 'CRITICAL' },
+    { time: 'MET 101h', desc: 'Signal reacquisition — crew reports nominal', tag: 'NOMINAL' },
+    { time: 'MET 104h', desc: 'Powered flyby burn — return trajectory injection', tag: 'CRITICAL' },
+    { time: 'MET 108h', desc: 'Lunar surface photography and observation', tag: 'SCIENCE' },
+  ]},
+  { day: 6, title: 'FREE-RETURN ARC', date: '2026-04-07 | L+06:00:00', events: [
+    { time: 'MET 120h', desc: 'Free-return trajectory — furthest from Moon', tag: 'NOMINAL' },
+    { time: 'MET 128h', desc: 'Deep-space radiation measurements', tag: 'SCIENCE' },
+    { time: 'MET 132h', desc: 'Mid-course correction (OMS-4)', tag: 'NOMINAL' },
+  ]},
+  { day: 7, title: 'RETURN COAST I', date: '2026-04-08 | L+07:00:00', events: [
+    { time: 'MET 148h', desc: 'Life support consumables assessment', tag: 'NOMINAL' },
+    { time: 'MET 156h', desc: 'Crew exercise and medical monitoring', tag: 'NOMINAL' },
+    { time: 'MET 160h', desc: 'Guidance platform realignment', tag: 'NOMINAL' },
+  ]},
+  { day: 8, title: 'RETURN COAST II', date: '2026-04-09 | L+08:00:00', events: [
+    { time: 'MET 172h', desc: 'Final mid-course correction (OMS-5)', tag: 'NOMINAL' },
+    { time: 'MET 180h', desc: 'Entry corridor verification', tag: 'CRITICAL' },
+    { time: 'MET 188h', desc: 'Crew stows cabin for re-entry', tag: 'NOMINAL' },
+  ]},
+  { day: 9, title: 'ENTRY PREP', date: '2026-04-10 | L+09:00:00', events: [
+    { time: 'MET 200h', desc: 'Service Module separation', tag: 'CRITICAL' },
+    { time: 'MET 204h', desc: 'CM RCS checkout and attitude alignment', tag: 'NOMINAL' },
+    { time: 'MET 208h', desc: 'Crew suits up — cabin pressure verified', tag: 'CRITICAL' },
+    { time: 'MET 212h', desc: 'Deorbit/entry attitude established', tag: 'CRITICAL' },
+  ]},
+  { day: 10, title: 'SPLASHDOWN', date: '2026-04-11 | L+10:12:00', events: [
+    { time: 'MET 240h', desc: 'Entry Interface — 120 km, Mach 32', tag: 'CRITICAL' },
+    { time: 'MET+3m', desc: 'Peak heating — 2,760 °C heat shield', tag: 'CRITICAL' },
+    { time: 'MET+8m', desc: 'Drogue chute deployment — Mach 1.4', tag: 'CRITICAL' },
+    { time: 'MET+10m', desc: 'Main parachutes — 3x 116-ft canopies', tag: 'CRITICAL' },
+    { time: 'MET+14m', desc: 'SPLASHDOWN — Pacific Ocean', tag: 'CRITICAL' },
+    { time: 'MET+60m', desc: 'USS Portland crew recovery', tag: 'NOMINAL' },
+  ]}
+];
+
+// ═══════════ NASA API FUNCTIONS ═══════════
+
+// Simple session cache to avoid burning DEMO_KEY rate limits
+const apiCache = {};
+function getCached(key) {
+  const entry = apiCache[key];
+  if (entry && Date.now() - entry.ts < 600000) return entry.data; // 10 min cache
+  return null;
+}
+
+async function fetchAPOD() {
+  try {
+    const res = await fetch(`${API_BASE}/api/apod`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}${res.status === 429 ? ' (rate limited)' : ''}`);
+    const data = await res.json();
+    apiCache.apod = { data, ts: Date.now() };
+    const container = document.getElementById('apodContainer');
+    if (data.media_type === 'image') {
+      container.innerHTML = `
+        <img src="${data.url}" alt="${data.title}">
+        <div class="apod-title">${data.title}</div>
+        <div class="apod-desc">${data.explanation.substring(0, 200)}...</div>
+      `;
+    } else {
+      container.innerHTML = `
+        <div class="apod-title">${data.title}</div>
+        <div class="apod-desc">${data.explanation.substring(0, 300)}...</div>
+      `;
+    }
+    return true;
+  } catch (err) {
+    document.getElementById('apodContainer').innerHTML =
+      `<div class="loading-text" style="color:var(--terminal-amber)">APOD FEED: ${err.message}<br>RETRYING...</div>`;
+    return false;
+  }
+}
+
+async function fetchNeoWs() {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const res = await fetch(`${API_BASE}/api/neo?start_date=${today}&end_date=${today}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    const container = document.getElementById('neoList');
+
+    const neos = Object.values(data.near_earth_objects).flat();
+    neos.sort((a, b) => {
+      const distA = parseFloat(a.close_approach_data[0]?.miss_distance?.kilometers || 0);
+      const distB = parseFloat(b.close_approach_data[0]?.miss_distance?.kilometers || 0);
+      return distA - distB;
+    });
+
+    container.innerHTML = `
+      <div style="color:var(--terminal-amber);font-size:9px;margin-bottom:8px;letter-spacing:2px;">
+        ${data.element_count} OBJECTS TRACKED TODAY
+      </div>
+      ${neos.slice(0, 10).map(neo => {
+        const approach = neo.close_approach_data[0];
+        const dist = approach ? parseFloat(approach.miss_distance.lunar).toFixed(2) : '?';
+        const vel = approach ? parseFloat(approach.relative_velocity.kilometers_per_second).toFixed(1) : '?';
+        const hazard = neo.is_potentially_hazardous_asteroid;
+        return `
+          <div class="neo-item">
+            <div>
+              <span class="neo-name">${neo.name.replace(/[()]/g, '')}</span>
+              <span class="${hazard ? 'neo-hazard' : 'neo-safe'}">${hazard ? 'PHA' : 'SAFE'}</span>
+            </div>
+            <div style="text-align:right">
+              <span class="neo-dist">${dist} LD</span>
+              <span style="color:var(--text-dim);font-size:9px;margin-left:6px">${vel} km/s</span>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    `;
+    return true;
+  } catch (err) {
+    document.getElementById('neoList').innerHTML =
+      `<div class="loading-text" style="color:var(--terminal-amber)">NeoWs: ${err.message}<br>RETRYING...</div>`;
+    return false;
+  }
+}
+
+async function fetchDONKI() {
+  try {
+    // Fetch CME and solar flare data in parallel (server handles date ranges)
+    const [cmeRes, flrRes] = await Promise.allSettled([
+      fetch(`${API_BASE}/api/donki/cme`),
+      fetch(`${API_BASE}/api/donki/flr`)
+    ]);
+
+    const container = document.getElementById('spaceWeatherFeed');
+    let items = [];
+
+    if (cmeRes.status === 'fulfilled' && cmeRes.value.ok) {
+      const cmes = await cmeRes.value.json();
+      cmes.slice(-3).forEach(cme => {
+        items.push({
+          time: new Date(cme.startTime).toISOString().replace('T', ' ').substring(0, 16),
+          text: `CME detected — ${cme.note ? cme.note.substring(0, 80) : 'Coronal mass ejection observed'}`,
+          type: 'CME',
+          color: 'var(--terminal-amber)'
+        });
+      });
+    }
+
+    if (flrRes.status === 'fulfilled' && flrRes.value.ok) {
+      const flrs = await flrRes.value.json();
+      flrs.slice(-3).forEach(flr => {
+        items.push({
+          time: new Date(flr.beginTime).toISOString().replace('T', ' ').substring(0, 16),
+          text: `Solar flare class ${flr.classType} — ${flr.sourceLocation || 'location TBD'}`,
+          type: flr.classType,
+          color: flr.classType?.startsWith('X') ? 'var(--nasa-red)' : 'var(--terminal-amber)'
+        });
+      });
+    }
+
+    items.sort((a, b) => b.time.localeCompare(a.time));
+
+    if (items.length === 0) {
+      items.push({
+        time: new Date().toISOString().replace('T', ' ').substring(0, 16),
+        text: 'Space weather quiet — no significant events in past 7 days',
+        type: 'QUIET',
+        color: 'var(--terminal-green)'
+      });
+    }
+
+    container.innerHTML = items.slice(0, 5).map(item => `
+      <div class="feed-item">
+        <div class="feed-time">${item.time} UTC</div>
+        <div class="feed-text">${item.text}
+          <span class="feed-type" style="color:${item.color};border-color:${item.color}">${item.type}</span>
+        </div>
+      </div>
+    `).join('');
+
+    return true;
+  } catch (err) {
+    document.getElementById('spaceWeatherFeed').innerHTML =
+      `<div class="loading-text" style="color:var(--terminal-amber)">DONKI: ${err.message}<br>RETRYING...</div>`;
+    return false;
+  }
+}
+
+async function fetchMoonEphemeris() {
+  try {
+    const res = await fetch(`${API_BASE}/api/horizons`);
+    if (res.ok) {
+      const data = await res.json();
+      moonEphemeris = data;
+      // Extract illumination from result if available
+      const resultText = data.result || '';
+      const match = resultText.match(/Illu%\s*=\s*([\d.]+)/);
+      if (match) {
+        document.getElementById('tMoonAngle').textContent = match[1] + '% illum';
+      }
+    }
+  } catch (err) {
+    // Horizons may be CORS-blocked from browser; fallback silently
+    console.log('Horizons API (CORS expected):', err.message);
+  }
+}
+
+async function initLiveFeeds() {
+  // Fetch launch data FIRST — everything else depends on it
+  const launchResult = await fetchLaunchData();
+
+  // Always try Orion telemetry (Horizons may have data even if LL2 is down)
+  await fetchOrionTelemetry();
+
+  const results = await Promise.allSettled([
+    fetchAPOD(),
+    fetchNeoWs(),
+    fetchDONKI(),
+    fetchMoonEphemeris()
+  ]);
+
+  const feedSuccesses = results.filter(r => r.status === 'fulfilled' && r.value === true).length;
+  const totalFeeds = feedSuccesses + (launchResult ? 1 : 0);
+  const totalPossible = 5;
+  const dot = document.getElementById('apiStatusDot');
+  const val = document.getElementById('apiStatusValue');
+
+  if (totalFeeds >= 3) {
+    dot.className = 'status-dot';
+    val.textContent = `${totalFeeds}/${totalPossible} FEEDS`;
+    val.style.color = 'var(--terminal-green)';
+    apiConnected = true;
+  } else if (totalFeeds >= 1) {
+    dot.className = 'status-dot amber';
+    val.textContent = `${totalFeeds}/${totalPossible} FEEDS`;
+    val.style.color = 'var(--terminal-amber)';
+    apiConnected = true;
+  } else {
+    dot.className = 'status-dot red';
+    val.textContent = 'OFFLINE';
+    val.style.color = 'var(--nasa-red)';
+  }
+
+  document.getElementById('lastUpdate').textContent =
+    `LAST API POLL: ${new Date().toISOString().replace('T', ' ').substring(0, 19)} UTC`;
+
+  // Re-poll launch status every 30s (critical during countdown), other feeds every 5 min
+  setTimeout(pollLaunchStatus, 30000);
+  setTimeout(initLiveFeeds, 300000);
+}
+
+async function pollLaunchStatus() {
+  await fetchLaunchData();
+  // If in flight, also fetch live Orion telemetry
+  if (launchStatusCode === 6 || launchStatusCode === 3) {
+    await fetchOrionTelemetry();
+  }
+  document.getElementById('lastUpdate').textContent =
+    `LAST API POLL: ${new Date().toISOString().replace('T', ' ').substring(0, 19)} UTC`;
+  // Re-poll every 30 seconds
+  setTimeout(pollLaunchStatus, 30000);
+}
+
+// ═══════════ RENDER FUNCTIONS ═══════════
+
+let timelineUserSelected = false; // true when user manually clicks a day
+let lastAutoTimelineDay = -1;
+
+function renderTimeline() {
+  const container = document.getElementById('timeline');
+  const now = new Date();
+  const missionElapsedDays = LAUNCH_EPOCH ? (now - LAUNCH_EPOCH) / (24 * 3600 * 1000) : -1;
+  const isFlying = launchStatusCode === 6 || launchStatusCode === 3;
+  const currentDay = isFlying ? Math.floor(Math.max(0, missionElapsedDays)) : -1;
+  const missionElapsedHours = missionElapsedDays * 24;
+
+  container.innerHTML = TIMELINE.map((day, i) => {
+    const isCompleted = isFlying && missionElapsedDays > day.day + 1;
+    const isActive = isFlying && !isCompleted && missionElapsedDays >= day.day && missionElapsedDays < day.day + 1;
+    const isCurrent = isFlying && currentDay === day.day;
+    const isPreLaunchActive = !isFlying && i === 0;
+
+    // Determine which events have occurred based on MET hours
+    const eventHtml = day.events.map(e => {
+      // Parse event time to hours for comparison
+      let eventHours = null;
+      const metMatch = e.time.match(/MET\s*(\d+)h/);
+      const tMatch = e.time.match(/T([+-])(\d+):(\d+)/);
+      if (metMatch) eventHours = parseInt(metMatch[1]);
+      else if (tMatch) eventHours = (tMatch[1] === '+' ? 1 : -1) * (parseInt(tMatch[2]) + parseInt(tMatch[3]) / 60);
+
+      const isPast = isFlying && eventHours !== null && missionElapsedHours >= eventHours;
+      const isNow = isFlying && eventHours !== null && Math.abs(missionElapsedHours - eventHours) < 0.5;
+
+      return `
+        <div class="event" style="${isPast ? 'opacity:0.5' : ''}${isNow ? ';border-left:2px solid var(--terminal-green);padding-left:6px' : ''}">
+          <span class="event-time">${e.time}</span>
+          <span class="event-desc">${e.desc}<span class="event-tag tag-${e.tag.toLowerCase()}">${e.tag}</span>${isPast ? '<span style="color:var(--terminal-green);font-size:8px;margin-left:4px">&#10003;</span>' : ''}</span>
+        </div>
+      `;
+    }).join('');
+
+    return `
+      <div class="timeline-day ${isActive || isCurrent || isPreLaunchActive ? 'active' : ''} ${isCompleted ? 'completed' : ''}" data-day="${i}" onclick="selectDay(${i}, true)">
+        <div class="day-marker">${day.day}</div>
+        <div class="day-content">
+          <div class="day-title">${day.title}${isCurrent ? ' <span style="color:var(--terminal-green);font-size:9px">[NOW]</span>' : ''}</div>
+          <div class="day-date">${day.date}</div>
+          <div class="day-events">${eventHtml}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Auto-scroll to current day if not user-selected
+  if (isFlying && currentDay >= 0 && currentDay !== lastAutoTimelineDay && !timelineUserSelected) {
+    lastAutoTimelineDay = currentDay;
+    const activeEl = container.querySelector('.timeline-day.active');
+    if (activeEl) {
+      activeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }
+}
+
+function selectDay(idx, userClick) {
+  if (userClick) {
+    timelineUserSelected = true;
+    // Reset auto-follow after 30 seconds
+    setTimeout(() => { timelineUserSelected = false; }, 30000);
+  }
+  document.querySelectorAll('.timeline-day').forEach((el, i) => {
+    el.classList.toggle('active', i === idx);
+  });
+}
+
+function renderCrew() {
+  const grid = document.getElementById('crewGrid');
+  grid.innerHTML = CREW.map((c, i) => `
+    <div class="crew-card ${i === 0 ? 'active' : ''}" onclick="selectCrew(this)">
+      <div class="crew-avatar">${c.initials}</div>
+      <div class="crew-name">${c.name}</div>
+      <div class="crew-role">${c.role}</div>
+      <div class="crew-stats">
+        <span class="crew-stat-label">RANK</span><span class="crew-stat-value">${c.rank}</span>
+        <span class="crew-stat-label">AGENCY</span><span class="crew-stat-value">${c.agency}</span>
+        <span class="crew-stat-label">MISSIONS</span><span class="crew-stat-value">${c.missions}</span>
+        <span class="crew-stat-label">FLIGHT HRS</span><span class="crew-stat-value">${c.hours}</span>
+        <span class="crew-stat-label">EVAS</span><span class="crew-stat-value">${c.evas}</span>
+        <span class="crew-stat-label">SELECTION</span><span class="crew-stat-value">${c.selection}</span>
+      </div>
+      <div class="crew-bio">${c.bio}</div>
+    </div>
+  `).join('');
+}
+
+function selectCrew(el) {
+  document.querySelectorAll('.crew-card').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// ═══════════ CLOCK (LIVE FROM API) ═══════════
+function updateClock() {
+  const now = new Date();
+  const metEl = document.getElementById('metClock');
+  const labelEl = document.querySelector('.met-label');
+
+  // If we don't have launch data yet, show waiting state
+  if (!LAUNCH_EPOCH) {
+    labelEl.textContent = 'AWAITING LAUNCH DATA FROM API';
+    metEl.textContent = '---:--:--:--';
+    metEl.style.color = 'var(--terminal-amber)';
+    animationProgress = 0;
+
+    // Update UTC time regardless
+    const doy = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 86400000);
+    document.getElementById('utcTime').textContent =
+      `UTC ${now.getUTCFullYear()}-${String(doy).padStart(3,'0')}T${String(now.getUTCHours()).padStart(2,'0')}:${String(now.getUTCMinutes()).padStart(2,'0')}:${String(now.getUTCSeconds()).padStart(2,'0')}Z`;
+    return;
+  }
+
+  const elapsedMs = now.getTime() - LAUNCH_EPOCH.getTime();
+
+  // Determine state from LL2 status code AND time
+  // Status codes: 1=Go, 2=TBD, 3=Success, 4=Failure, 5=Hold, 6=In Flight, 8=TBC
+  const isInFlight = launchStatusCode === 6 || launchStatusCode === 3;
+  const isHold = launchStatusCode === 5;
+  const isPreLaunch = elapsedMs < 0 || (!isInFlight && launchStatusCode !== 3);
+
+  const absMs = Math.abs(elapsedMs);
+  const totalSec = Math.floor(absMs / 1000);
+  const days = Math.floor(totalSec / 86400);
+  const hrs = Math.floor((totalSec % 86400) / 3600);
+  const mins = Math.floor((totalSec % 3600) / 60);
+  const secs = totalSec % 60;
+
+  if (isHold) {
+    labelEl.textContent = 'COUNTDOWN HOLD — T-MINUS';
+    metEl.textContent = `HOLD`;
+    metEl.style.color = 'var(--terminal-amber)';
+    animationProgress = 0;
+  } else if (isPreLaunch) {
+    if (elapsedMs > 0) {
+      // Past NET but not yet launched — likely in a hold or delay
+      labelEl.textContent = `NET PASSED — AWAITING LAUNCH (${launchStatus})`;
+      metEl.textContent = `+${String(days).padStart(3,'0')}:${String(hrs).padStart(2,'0')}:${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+      metEl.style.color = 'var(--terminal-amber)';
+    } else {
+      labelEl.textContent = 'COUNTDOWN TO LAUNCH (NET)';
+      metEl.textContent = `-${String(days).padStart(3,'0')}:${String(hrs).padStart(2,'0')}:${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+      metEl.style.color = 'var(--terminal-amber)';
+    }
+    animationProgress = 0;
+  } else {
+    // In flight or post-success — show MET
+    labelEl.textContent = 'MISSION ELAPSED TIME';
+    metEl.textContent = `${String(days).padStart(3,'0')}:${String(hrs).padStart(2,'0')}:${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+    metEl.style.color = elapsedMs > MISSION_DURATION_MS ? 'var(--text-dim)' : 'var(--terminal-green)';
+    animationProgress = Math.max(0, Math.min(1, elapsedMs / MISSION_DURATION_MS));
+  }
+
+  // UTC time
+  const doy = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 86400000);
+  document.getElementById('utcTime').textContent =
+    `UTC ${now.getUTCFullYear()}-${String(doy).padStart(3,'0')}T${String(now.getUTCHours()).padStart(2,'0')}:${String(now.getUTCMinutes()).padStart(2,'0')}:${String(now.getUTCSeconds()).padStart(2,'0')}Z`;
+
+  updateTelemetry(animationProgress);
+}
+
+// ═══════════ TRACKING MAP ═══════════
+const canvas = document.getElementById('trackingCanvas');
+const ctx = canvas.getContext('2d');
+let animationProgress = 0;
+
+const missionPhases = [
+  'LAUNCH / ASCENT', 'PARKING ORBIT', 'TRANS-LUNAR INJECTION',
+  'OUTBOUND COAST', 'LUNAR APPROACH', 'LUNAR FLYBY',
+  'FREE-RETURN ARC', 'INBOUND COAST', 'ENTRY PREP',
+  'RE-ENTRY', 'SPLASHDOWN'
+];
+
+function resizeCanvas() {
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width = rect.width * window.devicePixelRatio;
+  canvas.height = rect.height * window.devicePixelRatio;
+  ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+  canvas.style.width = rect.width + 'px';
+  canvas.style.height = rect.height + 'px';
+}
+
+// Live telemetry from JPL Horizons
+let liveOrionData = null;
+
+async function fetchOrionTelemetry() {
+  try {
+    const res = await fetch(`${API_BASE}/api/orion`);
+    if (!res.ok) {
+      console.log(`[ORION] HTTP ${res.status} — ephemeris may not be available yet`);
+      return;
+    }
+    const data = await res.json();
+    if (data.error) {
+      console.log(`[ORION] ${data.error}`);
+      return;
+    }
+    liveOrionData = data;
+    console.log(`[ORION] LIVE: ALT ${data.altitude_km} km | VEL ${data.speed_m_s} m/s | RANGE ${data.range_from_earth_km} km`);
+
+    // If Horizons has live spacecraft data, it's definitely in flight
+    // Override LL2 status if LL2 is stale/unavailable
+    if (data.altitude_km > 0 && (launchStatusCode !== 6 && launchStatusCode !== 3)) {
+      console.log('[ORION] Horizons confirms IN FLIGHT — overriding stale LL2 status');
+      launchStatusCode = 6;
+      launchStatus = 'In Flight';
+      updateLaunchStatusUI({ status: { id: 6, name: 'In Flight', abbrev: 'In Flight' }, net: LAUNCH_EPOCH?.toISOString(), window_start: null, window_end: null });
+      renderTimeline();
+    }
+
+    // Update telemetry display with REAL data
+    document.getElementById('tAlt').textContent = data.altitude_km.toLocaleString() + ' km';
+    document.getElementById('tVel').textContent = data.speed_m_s.toLocaleString() + ' m/s';
+    document.getElementById('tRange').textContent = data.range_from_earth_km.toLocaleString() + ' km';
+    document.getElementById('tMoonAngle').textContent = data.range_from_moon_km.toLocaleString() + ' km';
+
+    // Determine mission phase from altitude and range
+    const alt = data.altitude_km;
+    const range = data.range_from_earth_km;
+    let phase;
+    if (alt < 200) phase = 'LAUNCH / ASCENT';
+    else if (alt < 500 && range < 10000) phase = 'PARKING ORBIT';
+    else if (range < 20000) phase = 'TRANS-LUNAR INJECTION';
+    else if (range < 200000) phase = 'OUTBOUND COAST';
+    else if (range < 350000) phase = 'LUNAR APPROACH';
+    else if (range < 390000 && data.range_from_moon_km < 50000) phase = 'LUNAR FLYBY';
+    else if (data.rangeRate < 0 && range > 300000) phase = 'FREE-RETURN ARC';
+    else if (data.rangeRate < 0) phase = 'INBOUND COAST';
+    else phase = 'OUTBOUND COAST';
+
+    document.getElementById('tPhase').textContent = phase;
+    document.getElementById('phaseLabel').textContent = 'PHASE: ' + phase;
+
+    // Update map progress from real range data
+    animationProgress = Math.min(range / 384400, 0.45); // outbound only for now
+    if (data.range_rate_km_s < 0) {
+      // Returning — map to 0.55-1.0 range
+      animationProgress = 0.55 + (1 - range / 384400) * 0.45;
+    }
+
+  } catch (err) {
+    console.log('[ORION] fetch error:', err.message);
+  }
+}
+
+function updateTelemetry(progress) {
+  // If we have live data, skip the model — live data updates directly
+  if (liveOrionData) return;
+
+  // Fallback model for pre-launch or when Horizons data isn't available
+  const phaseIdx = Math.floor(progress * (missionPhases.length - 1));
+  const phase = missionPhases[Math.min(phaseIdx, missionPhases.length - 1)];
+
+  document.getElementById('tAlt').textContent = '-- km';
+  document.getElementById('tVel').textContent = '-- m/s';
+  document.getElementById('tRange').textContent = '-- km';
+  document.getElementById('tPhase').textContent = phase;
+  document.getElementById('phaseLabel').textContent = 'PHASE: ' + phase;
+}
+
+function drawMap(timestamp) {
+  const w = canvas.width / window.devicePixelRatio;
+  const h = canvas.height / window.devicePixelRatio;
+  ctx.clearRect(0, 0, w, h);
+
+  // Starfield
+  if (!window._stars) {
+    window._stars = [];
+    for (let i = 0; i < 200; i++) {
+      window._stars.push({ x: Math.random() * 2000, y: Math.random() * 600, r: Math.random() * 1.2 + 0.2, b: Math.random() * 0.5 + 0.3 });
+    }
+  }
+  window._stars.forEach(s => {
+    const twinkle = 0.5 + 0.5 * Math.sin(timestamp / 1000 + s.x);
+    ctx.beginPath();
+    ctx.arc(s.x % w, s.y % h, s.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(200,210,255,${s.b * twinkle})`;
+    ctx.fill();
+  });
+
+  // Grid
+  ctx.strokeStyle = 'rgba(30,60,100,0.15)';
+  ctx.lineWidth = 0.5;
+  for (let x = 0; x < w; x += 50) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
+  for (let y = 0; y < h; y += 50) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+
+  const earthX = w * 0.15, earthY = h * 0.5, earthR = 45;
+  const moonX = w * 0.82, moonY = h * 0.4, moonR = 26;
+
+  // Earth glow + body
+  const earthGlow = ctx.createRadialGradient(earthX, earthY, earthR, earthX, earthY, earthR * 2.5);
+  earthGlow.addColorStop(0, 'rgba(50,120,255,0.15)');
+  earthGlow.addColorStop(1, 'transparent');
+  ctx.fillStyle = earthGlow;
+  ctx.fillRect(earthX - earthR * 3, earthY - earthR * 3, earthR * 6, earthR * 6);
+
+  const earthGrad = ctx.createRadialGradient(earthX - 10, earthY - 10, 5, earthX, earthY, earthR);
+  earthGrad.addColorStop(0, '#4a9eff');
+  earthGrad.addColorStop(0.5, '#1a5ab8');
+  earthGrad.addColorStop(1, '#0a2a5a');
+  ctx.beginPath(); ctx.arc(earthX, earthY, earthR, 0, Math.PI * 2); ctx.fillStyle = earthGrad; ctx.fill();
+  ctx.font = '10px "Share Tech Mono", monospace'; ctx.fillStyle = '#6db3f2'; ctx.textAlign = 'center';
+  ctx.fillText('EARTH', earthX, earthY + earthR + 16);
+
+  // Moon glow + body + craters
+  const moonGlow = ctx.createRadialGradient(moonX, moonY, moonR, moonX, moonY, moonR * 2);
+  moonGlow.addColorStop(0, 'rgba(200,200,200,0.08)');
+  moonGlow.addColorStop(1, 'transparent');
+  ctx.fillStyle = moonGlow;
+  ctx.fillRect(moonX - moonR * 3, moonY - moonR * 3, moonR * 6, moonR * 6);
+
+  const moonGrad = ctx.createRadialGradient(moonX - 5, moonY - 5, 3, moonX, moonY, moonR);
+  moonGrad.addColorStop(0, '#c8c8c8'); moonGrad.addColorStop(0.6, '#888'); moonGrad.addColorStop(1, '#444');
+  ctx.beginPath(); ctx.arc(moonX, moonY, moonR, 0, Math.PI * 2); ctx.fillStyle = moonGrad; ctx.fill();
+  [[moonX-8,moonY-5,4],[moonX+6,moonY+8,3],[moonX-3,moonY+10,2.5],[moonX+10,moonY-8,2]].forEach(([cx,cy,cr]) => {
+    ctx.beginPath(); ctx.arc(cx, cy, cr, 0, Math.PI * 2); ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fill();
+  });
+  ctx.font = '10px "Share Tech Mono", monospace'; ctx.fillStyle = '#aaa'; ctx.textAlign = 'center';
+  ctx.fillText('LUNA', moonX, moonY + moonR + 16);
+
+  // Earth parking orbit (1.5 revolutions before TLI)
+  const parkingOrbitR = earthR + 12;
+  ctx.beginPath();
+  ctx.strokeStyle = 'rgba(109,179,242,0.2)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([3, 3]);
+  ctx.arc(earthX, earthY, parkingOrbitR, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Draw 1.5 orbit loops (parking orbit phase)
+  const orbitLoopPoints = [];
+  const orbitSteps = 60; // points for 1.5 orbits
+  for (let i = 0; i <= orbitSteps; i++) {
+    const angle = -Math.PI * 0.5 + (i / orbitSteps) * Math.PI * 3; // 1.5 revolutions
+    orbitLoopPoints.push({
+      x: earthX + Math.cos(angle) * parkingOrbitR,
+      y: earthY + Math.sin(angle) * parkingOrbitR
+    });
+  }
+
+  // Draw orbit loops (dim, part of planned path)
+  ctx.beginPath();
+  ctx.strokeStyle = 'rgba(109,179,242,0.15)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([2, 2]);
+  orbitLoopPoints.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Trajectory path (free-return with TLI departure from orbit)
+  const trajectoryPoints = [];
+  const steps = 300;
+  const tliDepartX = orbitLoopPoints[orbitLoopPoints.length - 1].x;
+  const tliDepartY = orbitLoopPoints[orbitLoopPoints.length - 1].y;
+
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    let x, y;
+    if (t < 0.45) {
+      // Outbound: from TLI departure point to Moon
+      const p = t / 0.45;
+      const cx1 = tliDepartX + 60, cy1 = tliDepartY - 130;
+      const cx2 = moonX - 100, cy2 = moonY + 80;
+      x = Math.pow(1-p,3)*tliDepartX + 3*Math.pow(1-p,2)*p*cx1 + 3*(1-p)*p*p*cx2 + p*p*p*(moonX+10);
+      y = Math.pow(1-p,3)*tliDepartY + 3*Math.pow(1-p,2)*p*cy1 + 3*(1-p)*p*p*cy2 + p*p*p*(moonY+30);
+    } else if (t < 0.55) {
+      // Lunar flyby arc
+      const p = (t - 0.45) / 0.1;
+      const angle = Math.PI * 0.3 + p * Math.PI * 1.2;
+      x = moonX + Math.cos(angle) * (moonR + 15);
+      y = moonY + Math.sin(angle) * (moonR + 15);
+    } else {
+      // Return to Earth
+      const p = (t - 0.55) / 0.45;
+      const cx1 = moonX - 60, cy1 = moonY - 100;
+      const cx2 = earthX + 120, cy2 = earthY + 130;
+      x = Math.pow(1-p,3)*(moonX-20) + 3*Math.pow(1-p,2)*p*cx1 + 3*(1-p)*p*p*cx2 + p*p*p*(earthX+30);
+      y = Math.pow(1-p,3)*(moonY-10) + 3*Math.pow(1-p,2)*p*cy1 + 3*(1-p)*p*p*cy2 + p*p*p*(earthY+40);
+    }
+    trajectoryPoints.push({ x, y });
+  }
+
+  // Planned path (dashed gold)
+  ctx.beginPath(); ctx.strokeStyle = 'rgba(212,168,67,0.2)'; ctx.lineWidth = 1; ctx.setLineDash([4,4]);
+  trajectoryPoints.forEach((p,i) => i === 0 ? ctx.moveTo(p.x,p.y) : ctx.lineTo(p.x,p.y));
+  ctx.stroke(); ctx.setLineDash([]);
+
+  // Traveled path (green solid)
+  const traveledIdx = Math.floor(animationProgress * steps);
+  if (traveledIdx > 0) {
+    ctx.beginPath(); ctx.strokeStyle = 'rgba(51,255,51,0.6)'; ctx.lineWidth = 2;
+    ctx.shadowColor = 'rgba(51,255,51,0.4)'; ctx.shadowBlur = 6;
+    for (let i = 0; i <= traveledIdx; i++) {
+      i === 0 ? ctx.moveTo(trajectoryPoints[i].x, trajectoryPoints[i].y) : ctx.lineTo(trajectoryPoints[i].x, trajectoryPoints[i].y);
+    }
+    ctx.stroke(); ctx.shadowBlur = 0;
+  }
+
+  // Orion marker — use LIVE Horizons position if available
+  let orionPos;
+  if (liveOrionData && liveOrionData.position) {
+    // Map real position (km, Earth-centered) to canvas coordinates
+    // The map spans Earth (left) to Moon (right) = 384,400 km
+    // Horizons gives geocentric X,Y,Z in km
+    const mapScale = (moonX - earthX) / 384400; // pixels per km
+    const posX = liveOrionData.position.x;
+    const posY = liveOrionData.position.y;
+    // Project X,Y onto the map (Z is out of plane, ignore for 2D)
+    // X axis: positive = away from Earth toward Moon (roughly)
+    // Use range for horizontal positioning (more intuitive)
+    const range = liveOrionData.range_from_earth_km;
+    const fraction = range / 384400;
+    // Interpolate along the Earth-Moon axis
+    const ox = earthX + (moonX - earthX) * fraction;
+    // Use Y component for vertical offset (scaled)
+    const oy = earthY + (moonY - earthY) * fraction + posY * mapScale * 0.3;
+    orionPos = { x: ox, y: oy };
+  } else {
+    // Fallback to trajectory curve
+    orionPos = trajectoryPoints[Math.min(traveledIdx, steps)];
+  }
+
+  // Draw Orion
+  ctx.beginPath(); ctx.arc(orionPos.x, orionPos.y, 12, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(252,61,33,0.2)'; ctx.fill();
+  const pulseR = 6 + Math.sin(timestamp / 300) * 3;
+  ctx.beginPath(); ctx.arc(orionPos.x, orionPos.y, pulseR, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(252,61,33,0.6)'; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.beginPath(); ctx.arc(orionPos.x, orionPos.y, 4, 0, Math.PI * 2);
+  ctx.fillStyle = '#FC3D21'; ctx.shadowColor = '#FC3D21'; ctx.shadowBlur = 10; ctx.fill(); ctx.shadowBlur = 0;
+  ctx.font = 'bold 9px "Share Tech Mono", monospace'; ctx.fillStyle = '#FC3D21'; ctx.textAlign = 'left';
+  ctx.fillText('ORION MPCV', orionPos.x + 14, orionPos.y - 8);
+  ctx.font = '8px "Share Tech Mono", monospace'; ctx.fillStyle = 'rgba(252,61,33,0.7)';
+  const altText = liveOrionData ? `${liveOrionData.altitude_km.toLocaleString()} km | ${liveOrionData.speed_m_s.toLocaleString()} m/s` : document.getElementById('tAlt').textContent;
+  ctx.fillText(altText, orionPos.x + 14, orionPos.y + 4);
+
+  // Draw line from Earth to Orion (range indicator)
+  if (liveOrionData) {
+    ctx.beginPath();
+    ctx.moveTo(earthX + earthR, earthY);
+    ctx.lineTo(orionPos.x, orionPos.y);
+    ctx.strokeStyle = 'rgba(51,255,51,0.15)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([2, 4]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Distance scale
+  ctx.font = '9px "Share Tech Mono", monospace'; ctx.fillStyle = 'rgba(100,130,160,0.5)'; ctx.textAlign = 'center';
+  const scaleY = h - 20;
+  ctx.beginPath(); ctx.moveTo(earthX, scaleY); ctx.lineTo(moonX, scaleY);
+  ctx.strokeStyle = 'rgba(100,130,160,0.3)'; ctx.lineWidth = 1; ctx.stroke();
+  ctx.fillText('384,400 km', (earthX + moonX) / 2, scaleY - 4);
+
+  requestAnimationFrame(drawMap);
+}
+
+// ═══════════ INIT ═══════════
+function init() {
+  renderTimeline();
+  renderCrew();
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+  setInterval(updateClock, 1000);
+  updateClock();
+  requestAnimationFrame(drawMap);
+
+  // Re-render timeline every 60s to track current milestone
+  setInterval(renderTimeline, 60000);
+
+  // Start live data feeds
+  initLiveFeeds();
+}
+
+init();
+</script>
+</body>
+</html>
