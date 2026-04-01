@@ -654,6 +654,7 @@
 
   .data-sources a:hover { text-decoration: underline; }
 
+  /* ─── TABLET (≤900px) ─── */
   @media (max-width: 900px) {
     .dashboard { grid-template-columns: 1fr; }
     .live-data-row { grid-template-columns: 1fr; }
@@ -661,6 +662,118 @@
     .crew-grid { grid-template-columns: 1fr; }
     .mission-header { flex-direction: column; gap: 12px; text-align: center; }
     .header-right { text-align: center; }
+    .map-container { height: 320px; }
+    .timeline-panel, .crew-panel { max-height: none; }
+  }
+
+  /* ─── MOBILE (≤600px) ─── */
+  @media (max-width: 600px) {
+    .mission-header { padding: 10px 12px; }
+    .nasa-logo { width: 48px; height: 48px; }
+    .header-left { gap: 12px; }
+    .mission-title h1 { font-size: 18px; letter-spacing: 4px; }
+    .mission-title .subtitle { font-size: 9px; letter-spacing: 2px; }
+    .met-clock { font-size: 20px; letter-spacing: 2px; }
+    .met-label { font-size: 8px; letter-spacing: 2px; }
+    .utc-time { font-size: 9px; }
+
+    .status-bar {
+      padding: 6px 12px;
+      gap: 10px;
+      flex-wrap: wrap;
+      font-size: 9px;
+      letter-spacing: 1px;
+      justify-content: center;
+    }
+    .status-item { gap: 4px; }
+    .status-dot { width: 6px; height: 6px; }
+
+    .map-container { height: 240px; }
+    .map-phase-label { font-size: 10px; padding: 4px 8px; letter-spacing: 1px; }
+    .map-telemetry {
+      font-size: 9px;
+      padding: 6px 8px;
+      gap: 2px;
+    }
+    .map-telemetry .telemetry-row { gap: 10px; }
+    .map-legend { font-size: 8px; gap: 8px; padding: 4px 8px; flex-wrap: wrap; }
+
+    .panel-header {
+      padding: 8px 12px;
+      font-size: 10px;
+      letter-spacing: 2px;
+    }
+    .panel-header .panel-id { font-size: 8px; display: none; }
+    .panel-header .live-badge { font-size: 8px; padding: 1px 5px; }
+
+    .timeline { padding: 10px; }
+    .timeline::before { left: 20px; }
+    .day-marker {
+      left: 10px;
+      width: 22px; height: 22px;
+    }
+    .day-content { margin-left: 42px; padding: 6px 8px; }
+    .day-title { font-size: 10px; letter-spacing: 1px; }
+    .day-date { font-size: 9px; }
+    .event-time { font-size: 9px; min-width: 48px; }
+    .event-desc { font-size: 10px; }
+    .event-tag { font-size: 7px; padding: 0 4px; }
+
+    .crew-card { padding: 12px; }
+    .crew-avatar { width: 44px; height: 44px; font-size: 14px; }
+    .crew-name { font-size: 10px; letter-spacing: 1px; }
+    .crew-role { font-size: 9px; }
+    .crew-stats { font-size: 8px; }
+    .crew-bio { font-size: 9px; }
+
+    .data-feed-panel .feed-content { padding: 8px 12px; font-size: 10px; }
+    .feed-item .feed-time { font-size: 8px; }
+    .feed-item .feed-text { font-size: 10px; }
+    .feed-item .feed-type { font-size: 7px; }
+
+    .apod-container { padding: 8px 12px; }
+    .apod-container img { max-height: 140px; }
+    .apod-title { font-size: 9px; }
+    .apod-desc { font-size: 8px; }
+
+    .neo-list { padding: 8px 12px; }
+    .neo-name { font-size: 9px; }
+    .neo-dist { font-size: 9px; }
+
+    .mission-params { grid-template-columns: repeat(2, 1fr); }
+    .param-value { font-size: 16px; }
+    .param-label { font-size: 8px; letter-spacing: 1px; }
+    .param-card { padding: 10px 8px; }
+
+    .data-sources {
+      padding: 6px 12px;
+      font-size: 8px;
+      flex-direction: column;
+      gap: 4px;
+      text-align: center;
+    }
+  }
+
+  /* ─── SMALL MOBILE (≤400px) ─── */
+  @media (max-width: 400px) {
+    .mission-title h1 { font-size: 16px; letter-spacing: 3px; }
+    .met-clock { font-size: 18px; }
+    .map-container { height: 200px; }
+    .map-telemetry { display: none; }
+    .map-phase-label { font-size: 9px; }
+    .status-bar { gap: 6px; font-size: 8px; }
+    .param-value { font-size: 14px; }
+  }
+
+  /* ─── TOUCH DEVICES ─── */
+  @media (hover: none) {
+    .timeline-day:active .day-content,
+    .crew-card:active { border-color: var(--panel-border); background: rgba(11,61,145,0.15); }
+    .crew-card:active::before { width: 100%; opacity: 0.05; }
+    .crew-bio { display: block; }
+    .day-marker { width: 28px; height: 28px; font-size: 9px; }
+    .timeline::before { left: 24px; }
+    .day-marker { left: 14px; }
   }
 </style>
 </head>
