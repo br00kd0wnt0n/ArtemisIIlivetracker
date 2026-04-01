@@ -170,50 +170,51 @@ async function handleOrionTelemetry() {
       return { status: 404, data: JSON.stringify({ error: 'No ephemeris data available yet — JPL may still be uploading trajectory solutions' }) };
     }
 
-    // Parse the latest vector data
+    // Parse ALL vector data points, then pick the one closest to "now"
     const lines = result.split('\n');
     let inData = false;
-    let latest = null;
+    let current = null;
+    const allPoints = [];
 
     for (const line of lines) {
       if (line.includes('$$SOE')) { inData = true; continue; }
       if (line.includes('$$EOE')) break;
       if (!inData) continue;
 
-      // Date line: "2461132.583... = A.D. 2026-Apr-02 02:00:00.0000 TDB"
-      const dateMatch = line.match(/A\.D\.\s+(\S+\s+\S+)/);
+      const dateMatch = line.match(/A\.D\.\s+(\d{4}-\w{3}-\d{2}\s+\d{2}:\d{2}:\d{2})/);
       if (dateMatch) {
-        latest = { timestamp: dateMatch[1] };
+        if (current && current.x !== undefined) allPoints.push(current);
+        current = { timestamp: dateMatch[1] };
         continue;
       }
+      if (!current) continue;
 
-      if (!latest) continue;
-
-      // Position: " X = ... Y = ... Z = ..."
       const posMatch = line.match(/X\s*=\s*([-\dE.+]+)\s+Y\s*=\s*([-\dE.+]+)\s+Z\s*=\s*([-\dE.+]+)/);
-      if (posMatch) {
-        latest.x = parseFloat(posMatch[1]);
-        latest.y = parseFloat(posMatch[2]);
-        latest.z = parseFloat(posMatch[3]);
-        continue;
-      }
+      if (posMatch) { current.x = parseFloat(posMatch[1]); current.y = parseFloat(posMatch[2]); current.z = parseFloat(posMatch[3]); continue; }
 
-      // Velocity: " VX= ... VY= ... VZ= ..."
       const velMatch = line.match(/VX\s*=\s*([-\dE.+]+)\s+VY\s*=\s*([-\dE.+]+)\s+VZ\s*=\s*([-\dE.+]+)/);
-      if (velMatch) {
-        latest.vx = parseFloat(velMatch[1]);
-        latest.vy = parseFloat(velMatch[2]);
-        latest.vz = parseFloat(velMatch[3]);
-        continue;
-      }
+      if (velMatch) { current.vx = parseFloat(velMatch[1]); current.vy = parseFloat(velMatch[2]); current.vz = parseFloat(velMatch[3]); continue; }
 
-      // Range/range-rate: " LT= ... RG= ... RR= ..."
       const rrMatch = line.match(/LT\s*=\s*([-\dE.+]+)\s+RG\s*=\s*([-\dE.+]+)\s+RR\s*=\s*([-\dE.+]+)/);
-      if (rrMatch) {
-        latest.lightTime = parseFloat(rrMatch[1]);
-        latest.range = parseFloat(rrMatch[2]);     // km from Earth center
-        latest.rangeRate = parseFloat(rrMatch[3]);  // km/s
+      if (rrMatch) { current.lightTime = parseFloat(rrMatch[1]); current.range = parseFloat(rrMatch[2]); current.rangeRate = parseFloat(rrMatch[3]); }
+    }
+    if (current && current.x !== undefined) allPoints.push(current);
+
+    // Find the data point closest to current time
+    let latest = null;
+    if (allPoints.length > 0) {
+      const nowMs = now.getTime();
+      let bestDiff = Infinity;
+      for (const pt of allPoints) {
+        // Parse "2026-Apr-02 02:00:00" to Date
+        const ptDate = new Date(pt.timestamp.replace(/-(\w{3})-/, (m, mon) => {
+          const months = {Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
+          return `-${months[mon]}-`;
+        }));
+        const diff = Math.abs(ptDate.getTime() - nowMs);
+        if (diff < bestDiff) { bestDiff = diff; latest = pt; latest._age_ms = ptDate.getTime() - nowMs; latest._date = ptDate; }
       }
+      console.log(`  parsed ${allPoints.length} data points, closest to now: ${latest.timestamp} (${Math.round(latest._age_ms/60000)} min ${latest._age_ms > 0 ? 'ahead' : 'ago'})`);
     }
 
     if (latest && latest.x !== undefined) {
@@ -226,8 +227,13 @@ async function handleOrionTelemetry() {
       // Moon distance (approximate — Moon is ~384400 km from Earth)
       const moonDist = 384400 - distFromCenter; // rough approximation
 
+      const ageMinutes = Math.round(latest._age_ms / 60000);
+      const isRealTime = Math.abs(ageMinutes) < 5;
+
       const telemetry = {
-        source: 'JPL Horizons (live)',
+        source: isRealTime ? 'JPL Horizons (real-time)' : `JPL Horizons (data from ${latest.timestamp} TDB)`,
+        data_age_minutes: ageMinutes,
+        is_realtime: isRealTime,
         spacecraft: 'Artemis II / Orion MPCV',
         horizonsId: -1024,
         timestamp: latest.timestamp,

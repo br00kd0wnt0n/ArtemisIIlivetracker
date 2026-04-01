@@ -1658,11 +1658,12 @@ async function fetchOrionTelemetry() {
       return;
     }
     liveOrionData = data;
-    console.log(`[ORION] LIVE: ALT ${data.altitude_km} km | VEL ${data.speed_m_s} m/s | RANGE ${data.range_from_earth_km} km`);
+    const ageMin = data.data_age_minutes || 0;
+    const ageLabel = data.is_realtime ? 'LIVE' : `${Math.abs(ageMin)}m ${ageMin > 0 ? 'predicted' : 'old'}`;
+    console.log(`[ORION] ${ageLabel}: ALT ${data.altitude_km} km | VEL ${data.speed_m_s} m/s | RANGE ${data.range_from_earth_km} km (data: ${data.timestamp})`);
 
-    // If Horizons has live spacecraft data, it's definitely in flight
-    // Override LL2 status if LL2 is stale/unavailable
-    if (data.altitude_km > 0 && (launchStatusCode !== 6 && launchStatusCode !== 3)) {
+    // If Horizons has spacecraft data, it's in flight (or will be)
+    if (data.altitude_km > 0 && data.is_realtime && (launchStatusCode !== 6 && launchStatusCode !== 3)) {
       console.log('[ORION] Horizons confirms IN FLIGHT — overriding stale LL2 status');
       launchStatusCode = 6;
       launchStatus = 'In Flight';
@@ -1670,11 +1671,18 @@ async function fetchOrionTelemetry() {
       renderTimeline();
     }
 
-    // Update telemetry display with REAL data
-    document.getElementById('tAlt').textContent = data.altitude_km.toLocaleString() + ' km';
+    // Update telemetry display with data + age indicator
+    const ageColor = data.is_realtime ? 'var(--terminal-green)' : 'var(--terminal-amber)';
+    document.getElementById('tAlt').innerHTML = `${data.altitude_km.toLocaleString()} km`;
     document.getElementById('tVel').textContent = data.speed_m_s.toLocaleString() + ' m/s';
     document.getElementById('tRange').textContent = data.range_from_earth_km.toLocaleString() + ' km';
     document.getElementById('tMoonAngle').textContent = data.range_from_moon_km.toLocaleString() + ' km';
+
+    // Show data age warning in phase label if not real-time
+    if (!data.is_realtime) {
+      document.getElementById('phaseLabel').innerHTML =
+        `PHASE: <span style="color:var(--terminal-amber)">${document.getElementById('tPhase').textContent}</span> <span style="font-size:9px;color:var(--terminal-amber)">[DATA FROM ${data.timestamp} TDB]</span>`;
+    }
 
     // Determine mission phase from altitude and range
     const alt = data.altitude_km;
