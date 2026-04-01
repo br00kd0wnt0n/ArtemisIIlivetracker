@@ -1444,15 +1444,35 @@ function renderTimeline() {
   const container = document.getElementById('timeline');
   const now = new Date();
   const missionElapsedDays = LAUNCH_EPOCH ? (now - LAUNCH_EPOCH) / (24 * 3600 * 1000) : -1;
-  // Consider flying if: LL2 says so, OR Horizons has live data, OR MET > 0 and launch epoch is set
   const isFlying = launchStatusCode === 6 || launchStatusCode === 3 || (LAUNCH_EPOCH && missionElapsedDays > 0 && liveOrionData);
-  const currentDay = isFlying ? Math.floor(Math.max(0, Math.min(missionElapsedDays, 10))) : -1;
   const missionElapsedHours = missionElapsedDays * 24;
 
+  // Determine current timeline day from live phase (not just elapsed calendar days)
+  // The phase from Horizons telemetry is the source of truth
+  const livePhase = document.getElementById('tPhase')?.textContent || '';
+  const phaseToDay = {
+    'LAUNCH / ASCENT': 0, 'PARKING ORBIT': 0, 'TRANS-LUNAR INJECTION': 0,
+    'OUTBOUND COAST': 1, 'DEEP SPACE TRANSIT': 2, 'OUTBOUND TRANSIT': 3,
+    'LUNAR APPROACH': 4, 'LUNAR FLYBY': 5, 'FREE-RETURN ARC': 6,
+    'INBOUND COAST': 7, 'RETURN COAST': 8, 'ENTRY PREP': 9,
+    'RE-ENTRY': 10, 'SPLASHDOWN': 10
+  };
+  // Use phase-based day if available, otherwise fall back to MET calendar day
+  let currentDay;
+  if (isFlying && livePhase && phaseToDay[livePhase] !== undefined) {
+    currentDay = phaseToDay[livePhase];
+  } else {
+    currentDay = isFlying ? Math.floor(Math.max(0, Math.min(missionElapsedDays, 10))) : -1;
+  }
+  // Also advance if MET hours clearly put us past launch day events
+  if (isFlying && currentDay === 0 && missionElapsedHours > 2.5) {
+    currentDay = Math.max(currentDay, 1); // Past ICPS sep = outbound coast
+  }
+
   container.innerHTML = TIMELINE.map((day, i) => {
-    const isCompleted = isFlying && missionElapsedDays > day.day + 1;
-    const isActive = isFlying && !isCompleted && missionElapsedDays >= day.day && missionElapsedDays < day.day + 1;
-    const isCurrent = isFlying && currentDay === day.day;
+    const isCompleted = isFlying && day.day < currentDay;
+    const isCurrent = isFlying && day.day === currentDay;
+    const isActive = isCurrent;
     const isPreLaunchActive = !isFlying && i === 0;
 
     // Determine which events have occurred based on MET hours
