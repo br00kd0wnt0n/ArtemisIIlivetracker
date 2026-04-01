@@ -1,0 +1,12 @@
+{
+  "name": "artemis-ii-live-tracker",
+  "version": "1.0.0",
+  "description": "Artemis II live mission control dashboard with real-time NASA data feeds",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

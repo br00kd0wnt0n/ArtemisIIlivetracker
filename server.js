@@ -234,9 +234,19 @@ async function handleOrionTelemetry() {
 const MIME = { '.html':'text/html', '.js':'application/javascript', '.css':'text/css', '.json':'application/json', '.png':'image/png', '.svg':'image/svg+xml' };
 
 const server = http.createServer(async (req, res) => {
-  const parsed = new URL(req.url, `http://localhost:${PORT}`);
-  const pathname = parsed.pathname;
+  let pathname, query;
+  try {
+    const parsed = new URL(req.url, `http://localhost:${PORT}`);
+    pathname = parsed.pathname;
+    query = parsed.search ? parsed.search.substring(1) : '';
+  } catch {
+    // Fallback URL parsing for older Node versions
+    const qIdx = req.url.indexOf('?');
+    pathname = qIdx >= 0 ? req.url.substring(0, qIdx) : req.url;
+    query = qIdx >= 0 ? req.url.substring(qIdx + 1) : '';
+  }
 
+  console.log(`[${req.method}] ${pathname}`);
   res.setHeader('Access-Control-Allow-Origin', '*');
 
   // API routes
@@ -245,12 +255,12 @@ const server = http.createServer(async (req, res) => {
     try {
       if (pathname.startsWith('/api/launch')) result = await handleLaunch(pathname);
       else if (pathname === '/api/apod') result = await handleApod();
-      else if (pathname === '/api/neo') result = await handleNeo(parsed.search?.substring(1));
+      else if (pathname === '/api/neo') result = await handleNeo(query);
       else if (pathname === '/api/donki/cme') result = await handleDonki('cme');
       else if (pathname === '/api/donki/flr') result = await handleDonki('flr');
       else if (pathname === '/api/horizons') result = await handleHorizons();
       else if (pathname === '/api/orion') result = await handleOrionTelemetry();
-      else { res.writeHead(404); res.end('{"error":"unknown route"}'); return; }
+      else { res.writeHead(404); res.end(JSON.stringify({ error: 'unknown route', pathname })); return; }
     } catch (err) {
       console.error(`[ERROR] ${pathname}: ${err.message}`);
       res.writeHead(502);
@@ -266,11 +276,17 @@ const server = http.createServer(async (req, res) => {
   let filePath = pathname === '/' ? '/index.html' : pathname;
   filePath = path.join(__dirname, filePath);
   try {
+    if (!fs.existsSync(filePath)) {
+      console.log(`[404] File not found: ${filePath}`);
+      res.writeHead(404); res.end('Not found');
+      return;
+    }
     const data = fs.readFileSync(filePath);
     const ext = path.extname(filePath);
     res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
     res.end(data);
-  } catch {
+  } catch (err) {
+    console.error(`[ERR] Static file: ${err.message}`);
     res.writeHead(404); res.end('Not found');
   }
 });
