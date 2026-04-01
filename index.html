@@ -1331,8 +1331,9 @@ function renderTimeline() {
   const container = document.getElementById('timeline');
   const now = new Date();
   const missionElapsedDays = LAUNCH_EPOCH ? (now - LAUNCH_EPOCH) / (24 * 3600 * 1000) : -1;
-  const isFlying = launchStatusCode === 6 || launchStatusCode === 3;
-  const currentDay = isFlying ? Math.floor(Math.max(0, missionElapsedDays)) : -1;
+  // Consider flying if: LL2 says so, OR Horizons has live data, OR MET > 0 and launch epoch is set
+  const isFlying = launchStatusCode === 6 || launchStatusCode === 3 || (LAUNCH_EPOCH && missionElapsedDays > 0 && liveOrionData);
+  const currentDay = isFlying ? Math.floor(Math.max(0, Math.min(missionElapsedDays, 10))) : -1;
   const missionElapsedHours = missionElapsedDays * 24;
 
   container.innerHTML = TIMELINE.map((day, i) => {
@@ -1443,7 +1444,7 @@ function updateClock() {
 
   // Determine state from LL2 status code AND time
   // Status codes: 1=Go, 2=TBD, 3=Success, 4=Failure, 5=Hold, 6=In Flight, 8=TBC
-  const isInFlight = launchStatusCode === 6 || launchStatusCode === 3;
+  const isInFlight = launchStatusCode === 6 || launchStatusCode === 3 || (liveOrionData && liveOrionData.altitude_km > 0);
   const isHold = launchStatusCode === 5;
   const isPreLaunch = elapsedMs < 0 || (!isInFlight && launchStatusCode !== 3);
 
@@ -1728,22 +1729,41 @@ function drawMap(timestamp) {
   // Orion marker — use LIVE Horizons position if available
   let orionPos;
   if (liveOrionData && liveOrionData.position) {
-    // Map real position (km, Earth-centered) to canvas coordinates
-    // The map spans Earth (left) to Moon (right) = 384,400 km
     // Horizons gives geocentric X,Y,Z in km
-    const mapScale = (moonX - earthX) / 384400; // pixels per km
-    const posX = liveOrionData.position.x;
-    const posY = liveOrionData.position.y;
-    // Project X,Y onto the map (Z is out of plane, ignore for 2D)
-    // X axis: positive = away from Earth toward Moon (roughly)
-    // Use range for horizontal positioning (more intuitive)
+    // Map real 3D position onto the 2D canvas
     const range = liveOrionData.range_from_earth_km;
-    const fraction = range / 384400;
-    // Interpolate along the Earth-Moon axis
-    const ox = earthX + (moonX - earthX) * fraction;
-    // Use Y component for vertical offset (scaled)
-    const oy = earthY + (moonY - earthY) * fraction + posY * mapScale * 0.3;
-    orionPos = { x: ox, y: oy };
+    const earthRadiusKm = 6371;
+    const mapPixelsPerKm = (moonX - earthX) / 384400;
+
+    if (range < 10000) {
+      // NEAR EARTH: show on/near parking orbit circle
+      // Use actual X,Y vector direction to place on orbit
+      const posX = liveOrionData.position.x;
+      const posY = liveOrionData.position.y;
+      const angle = Math.atan2(posY, posX);
+      // Scale orbit radius on map: parking orbit is ~6500-6600 km from center
+      // Map to just outside Earth circle on canvas
+      const orbitMapR = earthR + 8 + (range - earthRadiusKm) / 1000 * 3;
+      orionPos = {
+        x: earthX + Math.cos(angle) * orbitMapR,
+        y: earthY + Math.sin(angle) * orbitMapR
+      };
+    } else {
+      // OUTBOUND/DEEP SPACE: place along trajectory curve using range
+      // Use logarithmic scale near Earth for better visibility, linear far out
+      const fraction = range / 384400;
+      // Find closest point on the planned trajectory curve
+      const targetIdx = Math.min(Math.floor(fraction * steps * 0.9), steps);
+      // Blend between trajectory curve position and linear Earth-Moon interpolation
+      const curvePos = trajectoryPoints[targetIdx];
+      const linearX = earthX + (moonX - earthX) * fraction;
+      const linearY = earthY + (moonY - earthY) * fraction;
+      // Use curve shape but position by real range
+      orionPos = {
+        x: curvePos ? (curvePos.x * 0.7 + linearX * 0.3) : linearX,
+        y: curvePos ? (curvePos.y * 0.7 + linearY * 0.3) : linearY
+      };
+    }
   } else {
     // Fallback to trajectory curve
     orionPos = trajectoryPoints[Math.min(traveledIdx, steps)];
