@@ -8,5 +8,20 @@
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/br00kd0wnt0n/ArtemisIIlivetracker.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/br00kd0wnt0n/ArtemisIIlivetracker/issues"
+  },
+  "homepage": "https://github.com/br00kd0wnt0n/ArtemisIIlivetracker#readme",
+  "dependencies": {
+    "pg": "^8.20.0"
   }
 }

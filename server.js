@@ -2,9 +2,11 @@ const http = require('http');
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
+const db = require('./db');
 
 const PORT = process.env.PORT || 8080;
 const NASA_API_KEY = process.env.NASA_API_KEY || 'DEMO_KEY';
+const HAS_DB = !!process.env.DATABASE_URL;
 
 // Simple in-memory cache
 const cache = {};
@@ -58,7 +60,20 @@ async function handleLaunch(pathname) {
 
   console.log(`[PROXY] ${pathname} -> LL2 (trying ${urls.length} endpoints)`);
   const r = await tryUrls(urls);
-  if (r) { setCache('launch', r.data); return { status: 200, data: r.data }; }
+  if (r) {
+    setCache('launch', r.data);
+    // Log status changes to DB
+    if (HAS_DB) {
+      try {
+        const data = JSON.parse(r.data);
+        const artemis = data.results?.find(l => l.name?.toLowerCase().includes('artemis'));
+        if (artemis) {
+          db.storeEvent('launch_status', `${artemis.status?.name || 'unknown'} — NET: ${artemis.net}`, 'll2', { status: artemis.status, net: artemis.net }).catch(() => {});
+        }
+      } catch {}
+    }
+    return { status: 200, data: r.data };
+  }
   return { status: 502, data: JSON.stringify({ error: 'All LL2 endpoints unavailable', count: 0, results: [] }) };
 }
 
@@ -250,12 +265,72 @@ async function handleOrionTelemetry() {
       const out = JSON.stringify(telemetry);
       setCache('orion', out);
       console.log(`  [OK] ALT: ${telemetry.altitude_km} km | VEL: ${telemetry.speed_m_s} m/s | RANGE: ${telemetry.range_from_earth_km} km`);
+
+      // Store validated data point in DB
+      if (HAS_DB) {
+        db.storeTelemetry(telemetry).catch(e => console.error('[DB] async store err:', e.message));
+      }
+
       return { status: 200, data: out };
     }
 
-    return { status: 404, data: JSON.stringify({ error: 'No ephemeris data available yet', raw: result.substring(0, 500) }) };
+    // No Horizons data — fall back to DB
+    if (HAS_DB) {
+      console.log('  [FALLBACK] Horizons empty, checking DB...');
+      const dbPoint = await db.getLatestTelemetry();
+      if (dbPoint) {
+        const telemetry = {
+          source: `Database (last validated: ${dbPoint.data_timestamp})`,
+          data_age_minutes: Math.round((now.getTime() - new Date(dbPoint.timestamp).getTime()) / 60000),
+          is_realtime: false,
+          spacecraft: 'Artemis II / Orion MPCV',
+          horizonsId: -1024,
+          timestamp: dbPoint.data_timestamp,
+          position: { x: dbPoint.x, y: dbPoint.y, z: dbPoint.z, unit: 'km' },
+          velocity: { vx: dbPoint.vx, vy: dbPoint.vy, vz: dbPoint.vz, unit: 'km/s' },
+          altitude_km: dbPoint.altitude_km,
+          speed_km_s: dbPoint.speed_m_s / 1000,
+          speed_m_s: dbPoint.speed_m_s,
+          range_from_earth_km: dbPoint.range_from_earth_km,
+          range_from_moon_km: dbPoint.range_from_moon_km,
+          range_rate_km_s: 0,
+        };
+        console.log(`  [DB OK] Returning last known: ALT ${dbPoint.altitude_km} km from ${dbPoint.data_timestamp}`);
+        return { status: 200, data: JSON.stringify(telemetry) };
+      }
+    }
+
+    return { status: 404, data: JSON.stringify({ error: 'No ephemeris data available yet — JPL may still be uploading trajectory solutions' }) };
   } catch (err) {
     console.error(`  [ERR] orion: ${err.message}`);
+    // Final fallback: DB
+    if (HAS_DB) {
+      try {
+        const dbPoint = await db.getLatestTelemetry();
+        if (dbPoint) {
+          console.log(`  [DB FALLBACK] Returning last known from DB`);
+          const telemetry = {
+            source: `Database fallback (${dbPoint.data_timestamp})`,
+            data_age_minutes: Math.round((new Date().getTime() - new Date(dbPoint.timestamp).getTime()) / 60000),
+            is_realtime: false,
+            spacecraft: 'Artemis II / Orion MPCV',
+            horizonsId: -1024,
+            timestamp: dbPoint.data_timestamp,
+            position: { x: dbPoint.x, y: dbPoint.y, z: dbPoint.z, unit: 'km' },
+            velocity: { vx: dbPoint.vx, vy: dbPoint.vy, vz: dbPoint.vz, unit: 'km/s' },
+            altitude_km: dbPoint.altitude_km,
+            speed_km_s: dbPoint.speed_m_s / 1000,
+            speed_m_s: dbPoint.speed_m_s,
+            range_from_earth_km: dbPoint.range_from_earth_km,
+            range_from_moon_km: dbPoint.range_from_moon_km,
+            range_rate_km_s: 0,
+          };
+          return { status: 200, data: JSON.stringify(telemetry) };
+        }
+      } catch (dbErr) {
+        console.error(`  [DB ERR] ${dbErr.message}`);
+      }
+    }
     return { status: 502, data: JSON.stringify({ error: err.message }) };
   }
 }
@@ -290,6 +365,14 @@ const server = http.createServer(async (req, res) => {
       else if (pathname === '/api/donki/flr') result = await handleDonki('flr');
       else if (pathname === '/api/horizons') result = await handleHorizons();
       else if (pathname === '/api/orion') result = await handleOrionTelemetry();
+      else if (pathname === '/api/history' && HAS_DB) {
+        const points = await db.getTelemetryHistory(500);
+        result = { status: 200, data: JSON.stringify({ count: points.length, points }) };
+      }
+      else if (pathname === '/api/events' && HAS_DB) {
+        const events = await db.getEvents(50);
+        result = { status: 200, data: JSON.stringify({ count: events.length, events }) };
+      }
       else { res.writeHead(404); res.end(JSON.stringify({ error: 'unknown route', pathname })); return; }
     } catch (err) {
       console.error(`[ERROR] ${pathname}: ${err.message}`);
@@ -321,19 +404,27 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, () => {
+server.listen(PORT, async () => {
   console.log(`\n  ╔══════════════════════════════════════════════╗`);
   console.log(`  ║  ARTEMIS II MISSION CONTROL DASHBOARD        ║`);
   console.log(`  ║  http://localhost:${PORT}                        ║`);
   console.log(`  ║  API proxy active — no CORS issues            ║`);
   console.log(`  ╚══════════════════════════════════════════════╝\n`);
-  console.log(`  Live API Feeds:`);
+  console.log(`  Live API Feeds (Horizons is PRIMARY source):`);
   console.log(`    /api/launch      Launch Library 2 (status + NET)`);
   console.log(`    /api/apod        NASA Astronomy Photo of the Day`);
   console.log(`    /api/neo         NASA Near-Earth Object tracking`);
   console.log(`    /api/donki/cme   DONKI Coronal Mass Ejections`);
   console.log(`    /api/donki/flr   DONKI Solar Flare alerts`);
-  console.log(`    /api/horizons    JPL Horizons Moon ephemeris
-    /api/orion       JPL Horizons Artemis II LIVE telemetry (-1024)`);
-  console.log(`\n  API Key: ${NASA_API_KEY === 'DEMO_KEY' ? 'DEMO_KEY (set NASA_API_KEY for higher limits)' : 'custom key'}\n`);
+  console.log(`    /api/horizons    JPL Horizons Moon ephemeris`);
+  console.log(`    /api/orion       JPL Horizons Artemis II LIVE telemetry (-1024)`);
+  if (HAS_DB) {
+    console.log(`    /api/history     Validated telemetry history (PostgreSQL)`);
+    console.log(`    /api/events      Mission event log (PostgreSQL)`);
+    await db.initDB();
+    console.log(`  Database: PostgreSQL connected (validation + fallback)`);
+  } else {
+    console.log(`  Database: none (set DATABASE_URL for validation + fallback)`);
+  }
+  console.log(`  API Key: ${NASA_API_KEY === 'DEMO_KEY' ? 'DEMO_KEY (set NASA_API_KEY for higher limits)' : 'custom key'}\n`);
 });
