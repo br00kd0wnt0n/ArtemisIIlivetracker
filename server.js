@@ -121,30 +121,54 @@ async function handleOrionTelemetry() {
   if (cached) { console.log('[CACHE] orion'); return { status: 200, data: cached }; }
 
   // Query latest available position
-  // Horizons data for -1024 starts at 2026-APR-02 01:48:18 TDB
+  // JPL uploads trajectory solutions with a delay — start time shifts as new data arrives
   const now = new Date();
-  const horizonsStart = new Date('2026-04-02T01:49:00Z');
-  // If before Horizons data start, query from start
-  const queryStart = now < horizonsStart ? horizonsStart : new Date(now.getTime() - 600000);
-  const queryEnd = new Date(Math.max(now.getTime(), horizonsStart.getTime()) + 600000);
   const fmt = d => d.toISOString().replace('T',' ').substring(0, 19);
 
-  const url = `https://ssd.jpl.nasa.gov/api/horizons.api?format=json`
-    + `&COMMAND='-1024'&OBJ_DATA='NO'&MAKE_EPHEM='YES'`
-    + `&EPHEM_TYPE='VECTORS'&CENTER='500@399'`
-    + `&START_TIME='${fmt(queryStart)}'&STOP_TIME='${fmt(queryEnd)}'&STEP_SIZE='1 m'`;
+  // Try querying around "now" first, then progressively earlier windows
+  // This handles both the case where data is near-real-time and where it's delayed
+  const windows = [];
+  // Window 1: latest 20 minutes
+  windows.push([new Date(now.getTime() - 1200000), new Date(now.getTime() + 60000)]);
+  // Window 2: 1-2 hours ago
+  windows.push([new Date(now.getTime() - 7200000), new Date(now.getTime() - 3600000)]);
+  // Window 3: 2-4 hours ago
+  windows.push([new Date(now.getTime() - 14400000), new Date(now.getTime() - 7200000)]);
+  // Window 4: from known earliest possible start
+  windows.push([new Date('2026-04-02T02:00:00Z'), new Date('2026-04-02T03:00:00Z')]);
 
   console.log('[PROXY] /api/orion -> JPL Horizons (Artemis II spacecraft -1024)');
 
   try {
-    const r = await proxyFetch(url);
-    if (r.status !== 200) {
-      console.log(`  [${r.status}] Horizons Orion`);
-      return { status: r.status, data: r.data };
+    let result = '';
+    // Try each time window until we get data
+    for (const [wStart, wEnd] of windows) {
+      const url = `https://ssd.jpl.nasa.gov/api/horizons.api?format=json`
+        + `&COMMAND='-1024'&OBJ_DATA='NO'&MAKE_EPHEM='YES'`
+        + `&EPHEM_TYPE='VECTORS'&CENTER='500@399'`
+        + `&START_TIME='${fmt(wStart)}'&STOP_TIME='${fmt(wEnd)}'&STEP_SIZE='1 m'`;
+
+      console.log(`  trying window: ${fmt(wStart)} -> ${fmt(wEnd)}`);
+      const r = await proxyFetch(url);
+      if (r.status !== 200) {
+        console.log(`  [${r.status}] Horizons`);
+        continue;
+      }
+      const raw = JSON.parse(r.data);
+      if (raw.error && raw.error.includes('No ephemeris')) {
+        console.log(`  no data in this window`);
+        continue;
+      }
+      result = raw.result || '';
+      if (result.includes('$$SOE')) {
+        console.log(`  found data in window ${fmt(wStart)}`);
+        break;
+      }
     }
 
-    const raw = JSON.parse(r.data);
-    const result = raw.result || '';
+    if (!result || !result.includes('$$SOE')) {
+      return { status: 404, data: JSON.stringify({ error: 'No ephemeris data available yet — JPL may still be uploading trajectory solutions' }) };
+    }
 
     // Parse the latest vector data
     const lines = result.split('\n');
