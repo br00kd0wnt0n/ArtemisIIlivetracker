@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ARTEMIS II - MISSION CONTROL DASHBOARD</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Courier+Prime:wght@400;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Courier+Prime:wght@400;700&display=swap');
 
   :root {
     --nasa-red: #FC3D21;
@@ -18,6 +18,137 @@
     --text-primary: #e8d5b0;
     --text-dim: #7a8a6a;
   }
+
+  /* ─── LIGHT / DAY THEME ─── */
+  [data-theme="light"] {
+    --nasa-red: #D42010;
+    --nasa-blue: #0B3D91;
+    --nasa-gold: #8B6914;
+    --terminal-green: #0A7D2E;
+    --terminal-amber: #B87800;
+    --panel-bg: #f4f5f7;
+    --panel-border: #d0d5dd;
+    --text-primary: #1a1a2e;
+    --text-dim: #6b7280;
+  }
+
+  [data-theme="light"] body {
+    background: #e8eaed;
+    font-family: 'Inter', -apple-system, sans-serif;
+  }
+
+  [data-theme="light"] .mission-header {
+    background: linear-gradient(180deg, #0B3D91 0%, #0a2d6b 100%);
+  }
+
+  [data-theme="light"] .met-clock {
+    color: #fff;
+    text-shadow: none;
+  }
+
+  [data-theme="light"] .status-bar {
+    background: #fff;
+    border-bottom: 1px solid var(--panel-border);
+  }
+
+  [data-theme="light"] .panel {
+    background: #fff;
+    border-color: var(--panel-border);
+  }
+
+  [data-theme="light"] .panel-header {
+    background: linear-gradient(90deg, rgba(11,61,145,0.08), transparent);
+  }
+
+  [data-theme="light"] .map-container { background: #0a0e18; }
+
+  [data-theme="light"] .narrator-bar {
+    background: #fff;
+    border-color: var(--panel-border);
+  }
+
+  [data-theme="light"] .narrator-text { color: #1a1a2e; }
+  [data-theme="light"] .narrator-text .nar-value { color: var(--terminal-green); }
+  [data-theme="light"] .narrator-text .nar-phase { color: var(--terminal-amber); }
+
+  [data-theme="light"] .timeline-day:hover .day-content,
+  [data-theme="light"] .timeline-day.active .day-content {
+    background: rgba(11,61,145,0.05);
+    border-color: var(--panel-border);
+  }
+
+  [data-theme="light"] .crew-card { background: #fff; }
+  [data-theme="light"] .crew-card:hover,
+  [data-theme="light"] .crew-card.active { background: rgba(11,61,145,0.04); }
+  [data-theme="light"] .crew-avatar { background: #e8eaed; border-color: var(--nasa-blue); }
+  [data-theme="light"] .crew-avatar::after { border-color: rgba(11,61,145,0.2); }
+  [data-theme="light"] .crew-avatar img { filter: none; }
+  [data-theme="light"] .crew-name { color: #1a1a2e; }
+  [data-theme="light"] .crew-bio { color: #4b5563; }
+  [data-theme="light"] .crew-grid { background: var(--panel-border); }
+
+  [data-theme="light"] .data-feed-panel { background: #fff; }
+  [data-theme="light"] .feed-item { border-bottom-color: #e5e7eb; }
+
+  [data-theme="light"] .live-data-row { border-top-color: var(--panel-border); }
+
+  [data-theme="light"] .mission-params {
+    background: var(--panel-border);
+    border-top-color: var(--nasa-blue);
+  }
+  [data-theme="light"] .param-card { background: #fff; }
+  [data-theme="light"] .param-value {
+    text-shadow: none;
+  }
+  [data-theme="light"] .param-card.static .param-value { color: var(--nasa-blue); }
+
+  [data-theme="light"] .data-sources { background: #f9fafb; border-top-color: #e5e7eb; }
+
+  [data-theme="light"] .day-marker {
+    background: #fff;
+    border-color: var(--nasa-blue);
+    color: var(--nasa-blue);
+  }
+  [data-theme="light"] .timeline-day.active .day-marker {
+    background: var(--nasa-blue);
+    color: #fff;
+    box-shadow: 0 0 8px rgba(11,61,145,0.4);
+  }
+  [data-theme="light"] .timeline-day.completed .day-marker {
+    background: var(--terminal-green);
+    border-color: var(--terminal-green);
+    color: #fff;
+  }
+
+  [data-theme="light"] .event-tag { font-weight: 600; }
+
+  /* CRT effects off in light mode */
+  [data-theme="light"] body::after,
+  [data-theme="light"] body::before { display: none; }
+
+  [data-theme="light"] .loading-digits { opacity: 0.25; }
+
+  [data-theme="light"] .map-telemetry {
+    background: rgba(5,8,16,0.88);
+  }
+
+  /* ─── THEME TOGGLE ─── */
+  .theme-toggle {
+    background: none;
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 4px;
+    color: #fff;
+    cursor: pointer;
+    padding: 4px 8px;
+    font-size: 16px;
+    line-height: 1;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .theme-toggle:hover { border-color: rgba(255,255,255,0.6); background: rgba(255,255,255,0.1); }
+  .theme-toggle .toggle-icon { font-size: 14px; }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -944,6 +1075,9 @@
     <div class="met-label">MISSION ELAPSED TIME</div>
     <div class="met-clock flicker" id="metClock">000:00:00:00</div>
     <div class="utc-time" id="utcTime">UTC 2026-091T00:00:00Z</div>
+    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle day/night mode">
+      <span class="toggle-icon" id="themeIcon">&#9789;</span>
+    </button>
   </div>
 </header>
 
@@ -2363,6 +2497,26 @@ function init() {
   // Start live data feeds
   initLiveFeeds();
 }
+
+// ═══════════ THEME TOGGLE ═══════════
+function toggleTheme() {
+  const html = document.documentElement;
+  const current = html.getAttribute('data-theme');
+  const next = current === 'light' ? 'dark' : 'light';
+  html.setAttribute('data-theme', next);
+  document.getElementById('themeIcon').innerHTML = next === 'light' ? '&#9788;' : '&#9789;';
+  localStorage.setItem('artemis-theme', next);
+}
+
+// Restore saved theme
+(function() {
+  const saved = localStorage.getItem('artemis-theme');
+  if (saved === 'light') {
+    document.documentElement.setAttribute('data-theme', 'light');
+    const icon = document.getElementById('themeIcon');
+    if (icon) icon.innerHTML = '&#9788;';
+  }
+})();
 
 init();
 </script>
