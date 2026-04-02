@@ -134,21 +134,19 @@
 
   /* ─── THEME TOGGLE ─── */
   .theme-toggle {
-    position: absolute;
-    top: 12px;
-    right: 12px;
     background: none;
-    border: 1px solid rgba(255,255,255,0.25);
-    border-radius: 4px;
-    color: #fff;
+    border: 1px solid var(--panel-border);
+    border-radius: 3px;
+    color: var(--text-dim);
     cursor: pointer;
-    padding: 4px 7px;
-    font-size: 14px;
+    padding: 3px 6px;
+    font-size: 13px;
     line-height: 1;
     transition: all 0.2s;
-    z-index: 10;
+    margin-left: auto;
+    flex-shrink: 0;
   }
-  .theme-toggle:hover { border-color: rgba(255,255,255,0.6); background: rgba(255,255,255,0.1); }
+  .theme-toggle:hover { border-color: var(--nasa-gold); color: var(--nasa-gold); }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -1076,9 +1074,6 @@
     <div class="met-clock flicker" id="metClock">000:00:00:00</div>
     <div class="utc-time" id="utcTime">UTC 2026-091T00:00:00Z</div>
   </div>
-  <button class="theme-toggle" onclick="toggleTheme()" title="Toggle day/night mode">
-    <span class="toggle-icon" id="themeIcon">&#9789;</span>
-  </button>
 </header>
 
 <!-- ═══════════ STATUS BAR ═══════════ -->
@@ -1118,6 +1113,9 @@
     <span class="status-label">NASA API</span>
     <span class="status-value" id="apiStatusValue">CONNECTING</span>
   </div>
+  <button class="theme-toggle" onclick="toggleTheme()" title="Toggle day/night mode">
+    <span class="toggle-icon" id="themeIcon">&#9789;</span>
+  </button>
 </div>
 
 <!-- ═══════════ MAIN DASHBOARD ═══════════ -->
