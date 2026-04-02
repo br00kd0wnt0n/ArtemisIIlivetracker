@@ -654,6 +654,45 @@
 
   .data-sources a:hover { text-decoration: underline; }
 
+  /* ─── MISSION NARRATOR ─── */
+  .narrator-bar {
+    grid-column: 1 / -1;
+    background: #080c14;
+    border-top: 1px solid var(--panel-border);
+    border-bottom: 1px solid var(--panel-border);
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 44px;
+  }
+
+  .narrator-label {
+    font-family: 'Orbitron', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--nasa-gold);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .narrator-text {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--text-primary);
+    line-height: 1.5;
+    overflow: hidden;
+  }
+
+  .narrator-text .nar-value {
+    color: var(--terminal-green);
+  }
+
+  .narrator-text .nar-phase {
+    color: var(--terminal-amber);
+  }
+
   /* ─── TABLET (≤900px) ─── */
   @media (max-width: 900px) {
     .dashboard { grid-template-columns: 1fr; }
@@ -668,6 +707,9 @@
 
   /* ─── MOBILE (≤600px) ─── */
   @media (max-width: 600px) {
+    .narrator-bar { padding: 8px 12px; gap: 8px; }
+    .narrator-label { font-size: 8px; }
+    .narrator-text { font-size: 10px; }
     .mission-header { padding: 10px 12px; }
     .nasa-logo { width: 48px; height: 48px; }
     .header-left { gap: 12px; }
@@ -863,6 +905,12 @@
         <div class="legend-item"><div class="legend-swatch" style="background:var(--nasa-red)"></div>ORION MPCV</div>
       </div>
     </div>
+  </div>
+
+  <!-- MISSION NARRATOR -->
+  <div class="narrator-bar">
+    <span class="narrator-label">STATUS</span>
+    <span class="narrator-text" id="narratorText">Awaiting telemetry data...</span>
   </div>
 
   <!-- TIMELINE -->
@@ -1727,6 +1775,10 @@ async function fetchOrionTelemetry() {
     const paramAlt = document.getElementById('paramAltitude');
     if (paramAlt) paramAlt.textContent = data.altitude_km.toLocaleString();
 
+    // Update mission narrator
+    const narratorEl = document.getElementById('narratorText');
+    if (narratorEl) narratorEl.innerHTML = generateNarration(data, phase);
+
     // Update map progress from real range data
     animationProgress = Math.min(range / 384400, 0.45); // outbound only for now
     if (data.range_rate_km_s < 0) {
@@ -1736,6 +1788,64 @@ async function fetchOrionTelemetry() {
 
   } catch (err) {
     console.log('[ORION] fetch error:', err.message);
+  }
+}
+
+function generateNarration(data, phase) {
+  const alt = data.altitude_km;
+  const altMi = data.altitude_miles || Math.round(alt * 0.621371);
+  const vel = data.speed_m_s;
+  const velKms = (vel / 1000).toFixed(1);
+  const velMph = data.speed_mph || Math.round(vel * 2.23694);
+  const range = data.range_from_earth_km;
+  const moonDist = data.range_from_moon_km;
+  const escVel = Math.sqrt(2 * 398600 / range);
+  const escVelKms = escVel.toFixed(1);
+  const pctToMoon = ((range / 384400) * 100).toFixed(1);
+  const pctSpeed = ((vel / 1000 / escVel) * 100).toFixed(0);
+
+  const v = (n) => `<span class="nar-value">${n}</span>`;
+  const p = (t) => `<span class="nar-phase">${t}</span>`;
+
+  switch (phase) {
+    case 'LAUNCH / ASCENT':
+      return `SLS Block 1 is powering Orion through the atmosphere at ${v(velMph + ' mph')}. Altitude ${v(altMi + ' miles')} and climbing. Targeting ${v('185 km')} parking orbit insertion.`;
+
+    case 'PARKING ORBIT':
+      return `Orion is in a ${v('185 km')} parking orbit at ${v(velMph + ' mph')}, completing systems checkout before Trans-Lunar Injection. The crew is verifying all spacecraft systems are nominal for the burn to the Moon.`;
+
+    case 'TRANS-LUNAR INJECTION':
+      return `${p('TLI BURN IN PROGRESS')} — ICPS is firing to accelerate Orion from orbital velocity to translunar trajectory. Speed ${v(velMph + ' mph')} (${v(velKms + ' km/s')}), targeting escape velocity of ${v(escVelKms + ' km/s')}.`;
+
+    case 'EARTH ORBIT':
+      return `Orion is in a bound elliptical orbit at ${v(altMi + ' miles')} (${v(alt.toLocaleString() + ' km')}) altitude, traveling ${v(velMph.toLocaleString() + ' mph')} (${v(velKms + ' km/s')}). Current speed is ${v(pctSpeed + '%')} of escape velocity (${v(escVelKms + ' km/s')}). ${moonDist > 300000 ? `The Moon is ${v(moonDist.toLocaleString() + ' km')} away.` : ''}`;
+
+    case 'OUTBOUND COAST':
+      return `Orion is coasting toward the Moon at ${v(velMph.toLocaleString() + ' mph')}, now ${v(pctToMoon + '%')} of the way to lunar distance. Altitude ${v(altMi.toLocaleString() + ' miles')} (${v(alt.toLocaleString() + ' km')}). The Moon is ${v(moonDist.toLocaleString() + ' km')} ahead. The crew is conducting deep-space systems checks.`;
+
+    case 'LUNAR APPROACH':
+      return `Orion is on final approach to the Moon, now ${v(moonDist.toLocaleString() + ' km')} away. Speed ${v(velMph.toLocaleString() + ' mph')}. The crew is preparing for the lunar flyby and far-side communication blackout.`;
+
+    case 'LUNAR FLYBY':
+      return `${p('LUNAR FLYBY')} — Orion is passing ${v(moonDist.toLocaleString() + ' km')} from the lunar surface at ${v(velMph.toLocaleString() + ' mph')}. The crew is ${moonDist < 5000 ? 'experiencing the closest approach to the Moon' : 'on the flyby trajectory'}. ${moonDist < 1000 ? 'This is the furthest humans have been from Earth since Apollo 17.' : ''}`;
+
+    case 'FREE-RETURN ARC':
+      return `Orion is on the free-return arc, using lunar gravity to slingshot back toward Earth. Range from Moon: ${v(moonDist.toLocaleString() + ' km')}. Speed ${v(velMph.toLocaleString() + ' mph')}. The spacecraft is now heading home.`;
+
+    case 'INBOUND COAST':
+      return `Orion is coasting back to Earth at ${v(velMph.toLocaleString() + ' mph')}, now ${v(range.toLocaleString() + ' km')} from home. The crew is preparing for re-entry. Speed will increase as Earth's gravity accelerates the spacecraft.`;
+
+    case 'ENTRY PREP':
+      return `Orion is preparing for atmospheric re-entry. Service module separation imminent. The crew is suited up and the heat shield will face temperatures up to ${v('2,760°C')} during re-entry at ${v('Mach 32')}.`;
+
+    case 'RE-ENTRY':
+      return `${p('RE-ENTRY')} — Orion is entering Earth's atmosphere at ${v(velMph.toLocaleString() + ' mph')}. Peak heating on the heat shield. Drogue and main parachute deployment sequence ahead.`;
+
+    case 'SPLASHDOWN':
+      return `${p('SPLASHDOWN')} — Orion has returned to Earth. USS Portland recovery team is en route. The first crewed lunar mission since Apollo 17 is complete.`;
+
+    default:
+      return `Orion is at ${v(altMi.toLocaleString() + ' miles')} altitude, traveling ${v(velMph.toLocaleString() + ' mph')}. Range from Earth: ${v(range.toLocaleString() + ' km')}.`;
   }
 }
 
