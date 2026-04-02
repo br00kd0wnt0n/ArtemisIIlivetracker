@@ -787,7 +787,7 @@
     </div>
     <div class="mission-title">
       <h1>ARTEMIS II</h1>
-      <div class="subtitle">CREWED LUNAR FLYBY MISSION &mdash; SLS / ORION MPCV &mdash; <span id="launchWindow">NET LOADING...</span></div>
+      <div class="subtitle">CREWED LUNAR FLYBY MISSION &mdash; ORION MPCV &mdash; <span id="launchWindow">IN FLIGHT</span></div>
     </div>
   </div>
   <div class="header-right">
@@ -806,18 +806,8 @@
   </div>
   <div class="status-item">
     <div class="status-dot"></div>
-    <span class="status-label">SLS CORE</span>
-    <span class="status-value">GO</span>
-  </div>
-  <div class="status-item">
-    <div class="status-dot"></div>
-    <span class="status-label">ORION MPCV</span>
-    <span class="status-value">GO</span>
-  </div>
-  <div class="status-item">
-    <div class="status-dot amber"></div>
-    <span class="status-label">LAUNCH</span>
-    <span class="status-value" style="color:var(--terminal-amber)">POLLING...</span>
+    <span class="status-label">ORION</span>
+    <span class="status-value">NOMINAL</span>
   </div>
   <div class="status-item">
     <div class="status-dot"></div>
@@ -826,8 +816,13 @@
   </div>
   <div class="status-item">
     <div class="status-dot"></div>
+    <span class="status-label">PHASE</span>
+    <span class="status-value" id="statusPhase">IN FLIGHT</span>
+  </div>
+  <div class="status-item">
+    <div class="status-dot"></div>
     <span class="status-label">CREW</span>
-    <span class="status-value">4/4 GO</span>
+    <span class="status-value">4/4 NOMINAL</span>
   </div>
   <div class="status-item">
     <div class="status-dot"></div>
@@ -931,16 +926,16 @@
       <div class="param-label">DURATION (DAYS)</div>
     </div>
     <div class="param-card">
-      <div class="param-value">384,400</div>
-      <div class="param-label">LUNAR DIST (KM)</div>
+      <div class="param-value" id="paramMoonDist">--</div>
+      <div class="param-label">DIST TO MOON (KM)</div>
     </div>
     <div class="param-card">
-      <div class="param-value">8,800</div>
-      <div class="param-label">SLS THRUST (kN)</div>
+      <div class="param-value" id="paramVelocity">--</div>
+      <div class="param-label">VELOCITY (KM/S)</div>
     </div>
     <div class="param-card">
-      <div class="param-value">39.5</div>
-      <div class="param-label">RE-ENTRY (km/s)</div>
+      <div class="param-value" id="paramAltitude">--</div>
+      <div class="param-label">ALTITUDE (KM)</div>
     </div>
     <div class="param-card">
       <div class="param-value">26,000</div>
@@ -1715,6 +1710,16 @@ async function fetchOrionTelemetry() {
     document.getElementById('tPhase').textContent = phase;
     document.getElementById('phaseLabel').textContent = 'PHASE: ' + phase;
 
+    // Update status bar phase and footer params with live data
+    const statusPhaseEl = document.getElementById('statusPhase');
+    if (statusPhaseEl) statusPhaseEl.textContent = phase;
+    const paramMoon = document.getElementById('paramMoonDist');
+    if (paramMoon) paramMoon.textContent = data.range_from_moon_km.toLocaleString();
+    const paramVel = document.getElementById('paramVelocity');
+    if (paramVel) paramVel.textContent = (data.speed_m_s / 1000).toFixed(1);
+    const paramAlt = document.getElementById('paramAltitude');
+    if (paramAlt) paramAlt.textContent = data.altitude_km.toLocaleString();
+
     // Update map progress from real range data
     animationProgress = Math.min(range / 384400, 0.45); // outbound only for now
     if (data.range_rate_km_s < 0) {
@@ -1800,7 +1805,7 @@ function drawMap(timestamp) {
     ctx.beginPath(); ctx.arc(cx, cy, cr, 0, Math.PI * 2); ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fill();
   });
   ctx.font = '10px "Share Tech Mono", monospace'; ctx.fillStyle = '#aaa'; ctx.textAlign = 'center';
-  ctx.fillText('LUNA', moonX, moonY + moonR + 16);
+  ctx.fillText('MOON', moonX, moonY + moonR + 16);
 
   // Earth parking orbit (1.5 revolutions before TLI)
   const parkingOrbitR = earthR + 12;
