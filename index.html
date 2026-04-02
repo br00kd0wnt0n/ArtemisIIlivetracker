@@ -442,9 +442,11 @@
     overflow: hidden;
   }
 
-  .crew-avatar svg {
+  .crew-avatar img {
     width: 100%;
     height: 100%;
+    object-fit: cover;
+    filter: sepia(0.3) contrast(1.1) brightness(0.9);
   }
 
   .crew-avatar::after {
@@ -1162,86 +1164,12 @@ function updateLaunchStatusUI(launch) {
 }
 
 // ═══════════ CREW DATA ═══════════
-// Pixel art portraits (16x16 grid, 8-bit retro style based on official NASA crew photos)
-const PIXEL_PORTRAITS = {
-  // Reid Wiseman: brown short hair, square jaw, blue eyes, flight suit
-  RW: `<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
-    <rect x="5" y="1" width="6" height="2" fill="#5C3A1E"/>
-    <rect x="4" y="2" width="8" height="1" fill="#5C3A1E"/>
-    <rect x="4" y="3" width="8" height="1" fill="#5C3A1E"/>
-    <rect x="4" y="4" width="8" height="2" fill="#E8B88A"/>
-    <rect x="3" y="5" width="10" height="1" fill="#E8B88A"/>
-    <rect x="3" y="6" width="10" height="1" fill="#E8B88A"/>
-    <rect x="5" y="5" width="2" height="1" fill="#4A7AB5"/>
-    <rect x="9" y="5" width="2" height="1" fill="#4A7AB5"/>
-    <rect x="7" y="6" width="2" height="1" fill="#D4956A"/>
-    <rect x="6" y="7" width="4" height="1" fill="#C47A5A"/>
-    <rect x="3" y="8" width="10" height="1" fill="#E8B88A"/>
-    <rect x="4" y="9" width="8" height="1" fill="#1B3B6F"/>
-    <rect x="3" y="10" width="10" height="2" fill="#1B3B6F"/>
-    <rect x="2" y="12" width="12" height="4" fill="#1B3B6F"/>
-    <rect x="6" y="9" width="4" height="1" fill="#E8B88A"/>
-  </svg>`,
-  // Victor Glover: dark skin, shaved head, warm brown eyes, flight suit
-  VG: `<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
-    <rect x="5" y="1" width="6" height="1" fill="#3A2518"/>
-    <rect x="4" y="2" width="8" height="1" fill="#3A2518"/>
-    <rect x="4" y="3" width="8" height="1" fill="#8B5E3C"/>
-    <rect x="4" y="4" width="8" height="2" fill="#8B5E3C"/>
-    <rect x="3" y="5" width="10" height="1" fill="#8B5E3C"/>
-    <rect x="3" y="6" width="10" height="1" fill="#8B5E3C"/>
-    <rect x="5" y="5" width="2" height="1" fill="#3D2B1A"/>
-    <rect x="9" y="5" width="2" height="1" fill="#3D2B1A"/>
-    <rect x="7" y="6" width="2" height="1" fill="#6B4430"/>
-    <rect x="6" y="7" width="4" height="1" fill="#5C3A28"/>
-    <rect x="3" y="8" width="10" height="1" fill="#8B5E3C"/>
-    <rect x="4" y="9" width="8" height="1" fill="#1B3B6F"/>
-    <rect x="3" y="10" width="10" height="2" fill="#1B3B6F"/>
-    <rect x="2" y="12" width="12" height="4" fill="#1B3B6F"/>
-    <rect x="6" y="9" width="4" height="1" fill="#8B5E3C"/>
-  </svg>`,
-  // Christina Koch: blonde shoulder-length hair, light skin, blue eyes, flight suit
-  CH: `<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
-    <rect x="5" y="0" width="6" height="1" fill="#C8A455"/>
-    <rect x="4" y="1" width="8" height="1" fill="#C8A455"/>
-    <rect x="3" y="2" width="10" height="1" fill="#C8A455"/>
-    <rect x="3" y="3" width="1" height="5" fill="#C8A455"/>
-    <rect x="12" y="3" width="1" height="5" fill="#C8A455"/>
-    <rect x="4" y="3" width="8" height="1" fill="#C8A455"/>
-    <rect x="4" y="4" width="8" height="2" fill="#F0C8A0"/>
-    <rect x="3" y="5" width="10" height="1" fill="#F0C8A0"/>
-    <rect x="3" y="6" width="10" height="1" fill="#F0C8A0"/>
-    <rect x="5" y="5" width="2" height="1" fill="#4A7AB5"/>
-    <rect x="9" y="5" width="2" height="1" fill="#4A7AB5"/>
-    <rect x="7" y="6" width="2" height="1" fill="#D4A080"/>
-    <rect x="6" y="7" width="4" height="1" fill="#C08070"/>
-    <rect x="3" y="8" width="10" height="1" fill="#F0C8A0"/>
-    <rect x="2" y="8" width="1" height="2" fill="#C8A455"/>
-    <rect x="13" y="8" width="1" height="2" fill="#C8A455"/>
-    <rect x="4" y="9" width="8" height="1" fill="#1B3B6F"/>
-    <rect x="3" y="10" width="10" height="2" fill="#1B3B6F"/>
-    <rect x="2" y="12" width="12" height="4" fill="#1B3B6F"/>
-    <rect x="6" y="9" width="4" height="1" fill="#F0C8A0"/>
-  </svg>`,
-  // Jeremy Hansen: light skin, short dark hair, Canadian, flight suit with CSA patch
-  JH: `<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
-    <rect x="5" y="1" width="6" height="2" fill="#2A1A0A"/>
-    <rect x="4" y="2" width="8" height="1" fill="#2A1A0A"/>
-    <rect x="4" y="3" width="8" height="1" fill="#2A1A0A"/>
-    <rect x="4" y="4" width="8" height="2" fill="#E8C8A0"/>
-    <rect x="3" y="5" width="10" height="1" fill="#E8C8A0"/>
-    <rect x="3" y="6" width="10" height="1" fill="#E8C8A0"/>
-    <rect x="5" y="5" width="2" height="1" fill="#4A7A55"/>
-    <rect x="9" y="5" width="2" height="1" fill="#4A7A55"/>
-    <rect x="7" y="6" width="2" height="1" fill="#D4A080"/>
-    <rect x="6" y="7" width="4" height="1" fill="#C08070"/>
-    <rect x="3" y="8" width="10" height="1" fill="#E8C8A0"/>
-    <rect x="4" y="9" width="8" height="1" fill="#1B3B6F"/>
-    <rect x="3" y="10" width="10" height="2" fill="#1B3B6F"/>
-    <rect x="2" y="12" width="12" height="4" fill="#1B3B6F"/>
-    <rect x="6" y="9" width="4" height="1" fill="#E8C8A0"/>
-    <rect x="10" y="10" width="2" height="2" fill="#CC2222"/>
-  </svg>`
+// Official NASA crew portrait URLs
+const CREW_PHOTOS = {
+  RW: 'https://www.nasa.gov/wp-content/uploads/2023/03/jsc2022e072218.jpg',
+  VG: 'https://www.nasa.gov/wp-content/uploads/2023/03/jsc2022e072426.jpg',
+  CH: 'https://www.nasa.gov/wp-content/uploads/2023/03/jsc2022e072331.jpg',
+  JH: 'https://www.nasa.gov/wp-content/uploads/2023/04/hansenmission.jpg',
 };
 
 const CREW = [
@@ -1672,7 +1600,7 @@ function renderCrew() {
   const grid = document.getElementById('crewGrid');
   grid.innerHTML = CREW.map((c, i) => `
     <div class="crew-card ${i === 0 ? 'active' : ''}" onclick="selectCrew(this)">
-      <div class="crew-avatar">${PIXEL_PORTRAITS[c.initials] || c.initials}</div>
+      <div class="crew-avatar"><img src="${CREW_PHOTOS[c.initials]}" alt="${esc(c.name)}" onerror="this.parentElement.textContent='${c.initials}'"></div>
       <div class="crew-name">${c.name}</div>
       <div class="crew-role">${c.role}</div>
       <div class="crew-stats">
@@ -2012,35 +1940,77 @@ function drawMap(timestamp) {
   ctx.font = '10px "Share Tech Mono", monospace'; ctx.fillStyle = '#aaa'; ctx.textAlign = 'center';
   ctx.fillText('MOON', moonX, moonY + moonR + 16);
 
-  // Earth parking orbit (1.5 revolutions before TLI)
-  const parkingOrbitR = earthR + 12;
-  ctx.beginPath();
-  ctx.strokeStyle = 'rgba(109,179,242,0.2)';
-  ctx.lineWidth = 1;
-  ctx.setLineDash([3, 3]);
-  ctx.arc(earthX, earthY, parkingOrbitR, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.setLineDash([]);
+  // Determine current orbital state from live data
+  const currentPhase = document.getElementById('tPhase')?.textContent || '';
+  const isInEarthOrbit = currentPhase === 'EARTH ORBIT' || currentPhase === 'PARKING ORBIT';
 
-  // Draw 1.5 orbit loops (parking orbit phase)
-  const orbitLoopPoints = [];
-  const orbitSteps = 60; // points for 1.5 orbits
-  for (let i = 0; i <= orbitSteps; i++) {
-    const angle = -Math.PI * 0.5 + (i / orbitSteps) * Math.PI * 3; // 1.5 revolutions
-    orbitLoopPoints.push({
-      x: earthX + Math.cos(angle) * parkingOrbitR,
-      y: earthY + Math.sin(angle) * parkingOrbitR
-    });
+  // Elliptical orbit around Earth (exaggerated for visibility)
+  // Perigee close to Earth, apogee extends outward
+  const perigeeR = earthR + 10;  // close pass
+  const apogeeR = earthR + 55;   // extends visibly outward (exaggerated)
+  const ellipseCenterX = earthX + (apogeeR - perigeeR) / 2;
+  const ellipseRx = (apogeeR + perigeeR) / 2;
+  const ellipseRy = earthR + 25; // vertical extent
+  const ellipseTilt = -0.3; // slight tilt in radians
+
+  // Draw the elliptical orbit path
+  ctx.save();
+  ctx.translate(ellipseCenterX, earthY);
+  ctx.rotate(ellipseTilt);
+  ctx.beginPath();
+  ctx.ellipse(0, 0, ellipseRx, ellipseRy, 0, 0, Math.PI * 2);
+  ctx.restore();
+
+  if (isInEarthOrbit) {
+    // Bright orbit when active
+    ctx.strokeStyle = 'rgba(109,179,242,0.4)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Draw orbit trail (green, showing where Orion has been)
+    const orbitProgress = (timestamp / 3000) % 1; // one orbit every 3s (exaggerated speed)
+    const trailLength = 0.7; // 70% of orbit shown as trail
+    ctx.save();
+    ctx.translate(ellipseCenterX, earthY);
+    ctx.rotate(ellipseTilt);
+    ctx.beginPath();
+    const trailStart = orbitProgress * Math.PI * 2;
+    const trailEnd = trailStart - trailLength * Math.PI * 2;
+    ctx.ellipse(0, 0, ellipseRx, ellipseRy, 0, trailEnd, trailStart);
+    ctx.restore();
+    ctx.strokeStyle = 'rgba(51,255,51,0.5)';
+    ctx.lineWidth = 2;
+    ctx.shadowColor = 'rgba(51,255,51,0.3)';
+    ctx.shadowBlur = 4;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // "EARTH ORBIT" label near ellipse
+    ctx.font = '8px "Share Tech Mono", monospace';
+    ctx.fillStyle = 'rgba(109,179,242,0.5)';
+    ctx.textAlign = 'center';
+    ctx.fillText('ELLIPTICAL ORBIT', earthX + 40, earthY - ellipseRy - 6);
+  } else {
+    // Dim orbit when not in this phase
+    ctx.strokeStyle = 'rgba(109,179,242,0.1)';
+    ctx.lineWidth = 0.5;
+    ctx.setLineDash([3, 3]);
+    ctx.stroke();
+    ctx.setLineDash([]);
   }
 
-  // Draw orbit loops (dim, part of planned path)
-  ctx.beginPath();
-  ctx.strokeStyle = 'rgba(109,179,242,0.15)';
-  ctx.lineWidth = 1;
-  ctx.setLineDash([2, 2]);
-  orbitLoopPoints.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
-  ctx.stroke();
-  ctx.setLineDash([]);
+  // Compute elliptical orbit points for TLI departure reference
+  const orbitLoopPoints = [];
+  const orbitSteps = 60;
+  for (let i = 0; i <= orbitSteps; i++) {
+    const angle = -Math.PI * 0.5 + (i / orbitSteps) * Math.PI * 2;
+    // Parametric ellipse with tilt
+    const ex = ellipseRx * Math.cos(angle);
+    const ey = ellipseRy * Math.sin(angle);
+    const rx = ex * Math.cos(ellipseTilt) - ey * Math.sin(ellipseTilt);
+    const ry = ex * Math.sin(ellipseTilt) + ey * Math.cos(ellipseTilt);
+    orbitLoopPoints.push({ x: ellipseCenterX + rx, y: earthY + ry });
+  }
 
   // Trajectory path (free-return with TLI departure from orbit)
   const trajectoryPoints = [];
@@ -2098,14 +2068,14 @@ function drawMap(timestamp) {
     const altitude = liveOrionData.altitude_km;
     const fraction = range / 384400; // 0 to 1 (Earth to Moon)
 
-    if (altitude < 400) {
-      // PARKING ORBIT: animate on orbit circle around Earth
-      const orbitAngle = (timestamp / 2000) % (Math.PI * 2); // animated orbit
-      const orbitMapR = earthR + 10;
-      orionPos = {
-        x: earthX + Math.cos(orbitAngle) * orbitMapR,
-        y: earthY + Math.sin(orbitAngle) * orbitMapR
-      };
+    if (isInEarthOrbit) {
+      // EARTH ORBIT: animate on elliptical orbit
+      const orbitAngle = (timestamp / 3000) * Math.PI * 2; // match trail animation speed
+      const ex = ellipseRx * Math.cos(orbitAngle);
+      const ey = ellipseRy * Math.sin(orbitAngle);
+      const rx = ex * Math.cos(ellipseTilt) - ey * Math.sin(ellipseTilt);
+      const ry = ex * Math.sin(ellipseTilt) + ey * Math.cos(ellipseTilt);
+      orionPos = { x: ellipseCenterX + rx, y: earthY + ry };
     } else {
       // Place directly on the trajectory curve at the correct proportional point
       // The outbound leg is steps 0-134 (t=0 to t=0.45), covering 0 to 384,400 km
