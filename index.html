@@ -134,21 +134,21 @@
 
   /* ─── THEME TOGGLE ─── */
   .theme-toggle {
+    position: absolute;
+    top: 12px;
+    right: 12px;
     background: none;
-    border: 1px solid rgba(255,255,255,0.3);
+    border: 1px solid rgba(255,255,255,0.25);
     border-radius: 4px;
     color: #fff;
     cursor: pointer;
-    padding: 4px 8px;
-    font-size: 16px;
+    padding: 4px 7px;
+    font-size: 14px;
     line-height: 1;
     transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    gap: 4px;
+    z-index: 10;
   }
   .theme-toggle:hover { border-color: rgba(255,255,255,0.6); background: rgba(255,255,255,0.1); }
-  .theme-toggle .toggle-icon { font-size: 14px; }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -1075,10 +1075,10 @@
     <div class="met-label">MISSION ELAPSED TIME</div>
     <div class="met-clock flicker" id="metClock">000:00:00:00</div>
     <div class="utc-time" id="utcTime">UTC 2026-091T00:00:00Z</div>
-    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle day/night mode">
-      <span class="toggle-icon" id="themeIcon">&#9789;</span>
-    </button>
   </div>
+  <button class="theme-toggle" onclick="toggleTheme()" title="Toggle day/night mode">
+    <span class="toggle-icon" id="themeIcon">&#9789;</span>
+  </button>
 </header>
 
 <!-- ═══════════ STATUS BAR ═══════════ -->
