@@ -2149,18 +2149,88 @@ function drawMap(timestamp) {
   const earthX = w * 0.15, earthY = h * 0.5, earthR = 45;
   const moonX = w * 0.82, moonY = h * 0.4, moonR = 26;
 
-  // Earth glow + body
+  // Earth glow
   const earthGlow = ctx.createRadialGradient(earthX, earthY, earthR, earthX, earthY, earthR * 2.5);
   earthGlow.addColorStop(0, 'rgba(50,120,255,0.15)');
   earthGlow.addColorStop(1, 'transparent');
   ctx.fillStyle = earthGlow;
   ctx.fillRect(earthX - earthR * 3, earthY - earthR * 3, earthR * 6, earthR * 6);
 
-  const earthGrad = ctx.createRadialGradient(earthX - 10, earthY - 10, 5, earthX, earthY, earthR);
-  earthGrad.addColorStop(0, '#4a9eff');
-  earthGrad.addColorStop(0.5, '#1a5ab8');
-  earthGrad.addColorStop(1, '#0a2a5a');
-  ctx.beginPath(); ctx.arc(earthX, earthY, earthR, 0, Math.PI * 2); ctx.fillStyle = earthGrad; ctx.fill();
+  // Earth with rotating continents
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(earthX, earthY, earthR, 0, Math.PI * 2);
+  ctx.clip();
+
+  // Ocean base
+  const earthGrad = ctx.createRadialGradient(earthX - 8, earthY - 8, 3, earthX, earthY, earthR);
+  earthGrad.addColorStop(0, '#3a8adf');
+  earthGrad.addColorStop(0.4, '#1a6ab8');
+  earthGrad.addColorStop(1, '#0a3a6a');
+  ctx.fillStyle = earthGrad;
+  ctx.fillRect(earthX - earthR, earthY - earthR, earthR * 2, earthR * 2);
+
+  // Rotation offset (one full rotation every 60 seconds)
+  const rot = (timestamp / 60000) * Math.PI * 2;
+
+  // Simplified continent shapes drawn as filled arcs/ellipses
+  // Each continent is an ellipse at a longitude that shifts with rotation
+  const continents = [
+    // [longitude, latitude, width, height] — Africa/Europe
+    { lon: 0.2, lat: 0.1, w: 0.22, h: 0.45, color: '#2a6e30' },
+    { lon: 0.2, lat: -0.25, w: 0.15, h: 0.2, color: '#2a6e30' },
+    // Americas
+    { lon: -1.6, lat: 0.25, w: 0.18, h: 0.35, color: '#2a7a32' },
+    { lon: -1.4, lat: -0.15, w: 0.25, h: 0.45, color: '#267028' },
+    // Asia
+    { lon: 1.2, lat: 0.3, w: 0.45, h: 0.3, color: '#2e7234' },
+    { lon: 1.5, lat: 0.05, w: 0.2, h: 0.25, color: '#2a6e30' },
+    // Australia
+    { lon: 2.2, lat: -0.3, w: 0.2, h: 0.15, color: '#3a7a30' },
+    // Antarctica hint
+    { lon: 0, lat: -0.85, w: 0.8, h: 0.12, color: '#c8d8e8' },
+  ];
+
+  continents.forEach(c => {
+    // Wrap longitude with rotation
+    let lonAngle = c.lon + rot;
+    // Only draw if on the visible hemisphere (-PI/2 to PI/2)
+    let vis = Math.cos(lonAngle);
+    if (vis < -0.1) return; // behind Earth
+
+    const cx = earthX + Math.sin(lonAngle) * earthR * 0.85;
+    const cy = earthY - c.lat * earthR * 1.6;
+    const sw = c.w * earthR * vis; // compress width as it nears edge
+    const sh = c.h * earthR;
+
+    if (sw < 1) return; // too thin to draw
+
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, Math.abs(sw), sh, 0, 0, Math.PI * 2);
+    ctx.fillStyle = c.color;
+    ctx.globalAlpha = 0.6 + vis * 0.4; // fade near edges
+    ctx.fill();
+  });
+
+  ctx.globalAlpha = 1;
+
+  // Atmosphere edge highlight
+  ctx.beginPath();
+  ctx.arc(earthX, earthY, earthR - 1, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(100,180,255,0.3)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Terminator shadow (day/night line on Earth)
+  const shadowGrad = ctx.createLinearGradient(earthX - earthR, earthY, earthX + earthR, earthY);
+  shadowGrad.addColorStop(0, 'rgba(0,0,0,0)');
+  shadowGrad.addColorStop(0.6, 'rgba(0,0,0,0)');
+  shadowGrad.addColorStop(1, 'rgba(0,0,20,0.4)');
+  ctx.fillStyle = shadowGrad;
+  ctx.fillRect(earthX - earthR, earthY - earthR, earthR * 2, earthR * 2);
+
+  ctx.restore();
+
   ctx.font = '10px "Share Tech Mono", monospace'; ctx.fillStyle = '#6db3f2'; ctx.textAlign = 'center';
   ctx.fillText('EARTH', earthX, earthY + earthR + 16);
 
