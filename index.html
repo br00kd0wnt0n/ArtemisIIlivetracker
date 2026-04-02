@@ -257,18 +257,74 @@
     top: 12px;
     right: 16px;
     font-family: 'Share Tech Mono', monospace;
-    font-size: 11px;
-    background: rgba(0,0,0,0.8);
+    background: rgba(5,8,16,0.92);
     border: 1px solid var(--panel-border);
-    padding: 10px 14px;
+    border-left: 3px solid var(--terminal-green);
+    padding: 12px 16px;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 2px;
+    min-width: 200px;
   }
 
-  .telemetry-row { display: flex; justify-content: space-between; gap: 20px; }
-  .telemetry-label { color: var(--text-dim); }
-  .telemetry-value { color: var(--terminal-green); text-align: right; }
+  .map-telemetry .telem-header {
+    font-family: 'Orbitron', monospace;
+    font-size: 8px;
+    letter-spacing: 2px;
+    color: var(--nasa-gold);
+    margin-bottom: 6px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid rgba(212,168,67,0.2);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .map-telemetry .telem-header .blink {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--terminal-green);
+    animation: pulse-dot 1.5s ease-in-out infinite;
+  }
+
+  .telemetry-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 16px;
+    padding: 3px 0;
+  }
+
+  .telemetry-row.primary {
+    padding: 5px 0;
+    border-bottom: 1px solid rgba(26,58,92,0.3);
+  }
+
+  .telemetry-label {
+    color: var(--text-dim);
+    font-size: 10px;
+    letter-spacing: 1px;
+  }
+
+  .telemetry-value {
+    color: var(--terminal-green);
+    text-align: right;
+    font-size: 13px;
+    text-shadow: 0 0 6px rgba(51,255,51,0.3);
+  }
+
+  .telemetry-row.primary .telemetry-value {
+    font-size: 15px;
+    font-family: 'Orbitron', monospace;
+    font-weight: 700;
+  }
+
+  .telemetry-row.phase-row .telemetry-value {
+    color: var(--terminal-amber);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+  }
 
   .map-phase-label {
     position: absolute;
@@ -780,11 +836,16 @@
     .map-container { height: 240px; }
     .map-phase-label { font-size: 10px; padding: 4px 8px; letter-spacing: 1px; }
     .map-telemetry {
-      font-size: 9px;
-      padding: 6px 8px;
-      gap: 2px;
+      padding: 8px 10px;
+      gap: 1px;
+      min-width: 150px;
+      border-left-width: 2px;
     }
-    .map-telemetry .telemetry-row { gap: 10px; }
+    .map-telemetry .telem-header { font-size: 7px; margin-bottom: 4px; }
+    .map-telemetry .telemetry-label { font-size: 8px; }
+    .map-telemetry .telemetry-value { font-size: 11px; }
+    .map-telemetry .telemetry-row.primary .telemetry-value { font-size: 12px; }
+    .map-telemetry .telemetry-row { gap: 8px; padding: 2px 0; }
     .map-legend { font-size: 8px; gap: 8px; padding: 4px 8px; flex-wrap: wrap; }
 
     .panel-header {
@@ -938,12 +999,13 @@
       <canvas id="trackingCanvas"></canvas>
       <div class="map-phase-label" id="phaseLabel">PHASE: LOADING...</div>
       <div class="map-telemetry" id="telemetryBox">
-        <div class="telemetry-row"><span class="telemetry-label">ALT</span><span class="telemetry-value" id="tAlt">185 km</span></div>
-        <div class="telemetry-row"><span class="telemetry-label">VEL</span><span class="telemetry-value" id="tVel">10,840 m/s</span></div>
-        <div class="telemetry-row"><span class="telemetry-label">RANGE</span><span class="telemetry-value" id="tRange">0 km</span></div>
+        <div class="telem-header"><span class="blink"></span>FLIGHT TELEMETRY</div>
+        <div class="telemetry-row primary"><span class="telemetry-label">ALT</span><span class="telemetry-value" id="tAlt">-- km</span></div>
+        <div class="telemetry-row primary"><span class="telemetry-label">VEL</span><span class="telemetry-value" id="tVel">-- m/s</span></div>
+        <div class="telemetry-row"><span class="telemetry-label">RANGE</span><span class="telemetry-value" id="tRange">-- km</span></div>
         <div class="telemetry-row"><span class="telemetry-label">INCL</span><span class="telemetry-value" id="tIncl">28.5&deg;</span></div>
-        <div class="telemetry-row"><span class="telemetry-label">PHASE</span><span class="telemetry-value" id="tPhase">TLI BURN</span></div>
-        <div class="telemetry-row"><span class="telemetry-label">MOON&ang;</span><span class="telemetry-value" id="tMoonAngle">--</span></div>
+        <div class="telemetry-row"><span class="telemetry-label">MOON</span><span class="telemetry-value" id="tMoonAngle">-- km</span></div>
+        <div class="telemetry-row phase-row"><span class="telemetry-label">PHASE</span><span class="telemetry-value" id="tPhase">LOADING</span></div>
       </div>
       <div class="map-legend">
         <div class="legend-item"><div class="legend-swatch" style="background:var(--terminal-green)"></div>TRAJECTORY</div>
@@ -2096,9 +2158,9 @@ function drawMap(timestamp) {
   trajectoryPoints.forEach((p,i) => i === 0 ? ctx.moveTo(p.x,p.y) : ctx.lineTo(p.x,p.y));
   ctx.stroke(); ctx.setLineDash([]);
 
-  // Traveled path (green solid)
+  // Traveled path — only show when actually on the translunar trajectory (not during orbit phase)
   const traveledIdx = Math.floor(animationProgress * steps);
-  if (traveledIdx > 0) {
+  if (!isInEarthOrbit && traveledIdx > 0) {
     ctx.beginPath(); ctx.strokeStyle = 'rgba(51,255,51,0.6)'; ctx.lineWidth = 2;
     ctx.shadowColor = 'rgba(51,255,51,0.4)'; ctx.shadowBlur = 6;
     for (let i = 0; i <= traveledIdx; i++) {
