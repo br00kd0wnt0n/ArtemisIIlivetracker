@@ -122,9 +122,25 @@ async function fetchAROW() {
   if (cached) return JSON.parse(cached);
 
   try {
-    const url = 'https://storage.googleapis.com/storage/v1/b/p-2-cen1/o/October%2F1%2FOctober_105_1.txt?alt=media';
-    const r = await proxyFetch(url, 10000);
-    if (r.status !== 200) return null;
+    // Try both the JSON API and direct media URL
+    const urls = [
+      'https://storage.googleapis.com/storage/v1/b/p-2-cen1/o/October%2F1%2FOctober_105_1.txt?alt=media',
+      'https://storage.googleapis.com/p-2-cen1/October/1/October_105_1.txt',
+    ];
+    let r = null;
+    for (const url of urls) {
+      try {
+        r = await proxyFetch(url, 15000);
+        if (r.status === 200) break;
+        console.log(`[AROW] ${url.substring(0, 60)}... -> HTTP ${r.status}`);
+      } catch (e) {
+        console.log(`[AROW] ${url.substring(0, 60)}... -> ${e.message}`);
+      }
+    }
+    if (!r || r.status !== 200) {
+      console.log('[AROW] All GCS URLs failed');
+      return null;
+    }
 
     const data = JSON.parse(r.data);
     const getVal = (key) => {
@@ -191,7 +207,7 @@ async function fetchAROW() {
     console.log(`[AROW] LIVE: ALT ${telemetry.altitude_miles} mi (${telemetry.altitude_km} km) | VEL ${telemetry.speed_mph} mph (${telemetry.speed_m_s} m/s)`);
     return telemetry;
   } catch (err) {
-    console.error(`[AROW] Error: ${err.message}`);
+    console.error(`[AROW] Error: ${err.message} | Stack: ${err.stack?.split('\n')[1]?.trim()}`);
     return null;
   }
 }
