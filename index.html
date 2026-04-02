@@ -1872,50 +1872,65 @@ function drawMap(timestamp) {
     ctx.stroke(); ctx.shadowBlur = 0;
   }
 
-  // Orion marker — use LIVE Horizons position if available
+  // Orion marker — place ON the trajectory curve at real range-based position
   let orionPos;
-  if (liveOrionData && liveOrionData.position) {
+  if (liveOrionData && liveOrionData.range_from_earth_km) {
     const range = liveOrionData.range_from_earth_km;
-    const earthRadiusKm = 6371;
     const altitude = liveOrionData.altitude_km;
-    const posX = liveOrionData.position.x;
-    const posY = liveOrionData.position.y;
-    const angle = Math.atan2(posY, posX);
+    const fraction = range / 384400; // 0 to 1 (Earth to Moon)
 
     if (altitude < 400) {
-      // PARKING ORBIT: show on orbit circle around Earth
+      // PARKING ORBIT: animate on orbit circle around Earth
+      const orbitAngle = (timestamp / 2000) % (Math.PI * 2); // animated orbit
       const orbitMapR = earthR + 10;
       orionPos = {
-        x: earthX + Math.cos(angle) * orbitMapR,
-        y: earthY + Math.sin(angle) * orbitMapR
+        x: earthX + Math.cos(orbitAngle) * orbitMapR,
+        y: earthY + Math.sin(orbitAngle) * orbitMapR
       };
     } else {
-      // OUTBOUND / DEEP SPACE: use actual direction vector from Earth
-      // Scale: use sqrt for near-Earth visibility (linear makes early transit invisible)
-      const fraction = range / 384400; // 0 to 1
-      const mapSpan = moonX - earthX;
+      // Place directly on the trajectory curve at the correct proportional point
+      // The outbound leg is steps 0-134 (t=0 to t=0.45), covering 0 to 384,400 km
+      // Map range fraction to curve index on the outbound leg
+      const outboundSteps = Math.floor(steps * 0.45); // ~135 steps for outbound
+      const curveIdx = Math.min(Math.floor(fraction * outboundSteps), outboundSteps);
 
-      // sqrt scaling: 8.6% of distance → ~29% of map span (more visible near Earth)
-      const scaledFraction = Math.sqrt(fraction);
-      const dist = scaledFraction * mapSpan;
+      // If returning (range_rate negative), use return leg
+      const isReturning = liveOrionData.range_rate_km_s < 0;
+      let pointIdx;
+      if (isReturning) {
+        // Return leg: steps 165-300, fraction 1->0
+        const returnStart = Math.floor(steps * 0.55);
+        const returnSteps = steps - returnStart;
+        pointIdx = returnStart + Math.floor((1 - fraction) * returnSteps);
+      } else {
+        pointIdx = curveIdx;
+      }
 
-      // Place along the actual vector direction from Earth center
-      // angle from Horizons X,Y gives the real orbital plane direction
-      // But we want to follow the planned trajectory curve shape
-      // So blend: use curve's Y offset but real distance for X
-      const curveIdx = Math.min(Math.floor(fraction * steps * 0.45 / 0.45), steps);
-      const curvePoint = trajectoryPoints[Math.min(curveIdx, steps)];
+      pointIdx = Math.max(0, Math.min(pointIdx, steps));
+      orionPos = trajectoryPoints[pointIdx];
 
-      // X position: Earth + scaled distance along Earth-Moon line
-      const ox = earthX + dist;
-      // Y position: follow the curve's vertical shape
-      const oy = curvePoint ? curvePoint.y : earthY;
-
-      orionPos = { x: Math.min(ox, moonX - moonR - 20), y: oy };
+      // Ensure minimum visible distance from Earth on map
+      if (orionPos) {
+        const distFromEarth = Math.sqrt((orionPos.x - earthX)**2 + (orionPos.y - earthY)**2);
+        if (distFromEarth < earthR + 15) {
+          // Too close to Earth center — nudge outward along the curve direction
+          const nextPt = trajectoryPoints[Math.min(pointIdx + 5, steps)];
+          if (nextPt) {
+            const dx = nextPt.x - earthX;
+            const dy = nextPt.y - earthY;
+            const len = Math.sqrt(dx*dx + dy*dy);
+            orionPos = {
+              x: earthX + dx / len * (earthR + 18),
+              y: earthY + dy / len * (earthR + 18)
+            };
+          }
+        }
+      }
     }
   } else {
     orionPos = trajectoryPoints[Math.min(traveledIdx, steps)];
   }
+  if (!orionPos) orionPos = { x: earthX + earthR + 15, y: earthY - 10 };
 
   // Draw Orion
   ctx.beginPath(); ctx.arc(orionPos.x, orionPos.y, 12, 0, Math.PI * 2);
