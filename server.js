@@ -116,6 +116,86 @@ async function handleDonki(type) {
   return { status: 502, data: JSON.stringify([]) };
 }
 
+// ─── AROW REAL-TIME TELEMETRY (scraped from NASA's GCS bucket) ───
+async function fetchAROW() {
+  const cached = getCached('arow', 5000); // 5s cache — AROW updates every ~2s
+  if (cached) return JSON.parse(cached);
+
+  try {
+    const url = 'https://storage.googleapis.com/storage/v1/b/p-2-cen1/o/October%2F1%2FOctober_105_1.txt?alt=media';
+    const r = await proxyFetch(url, 10000);
+    if (r.status !== 200) return null;
+
+    const data = JSON.parse(r.data);
+    const getVal = (key) => {
+      const p = data[key];
+      return p && p.Status === 'Good' ? parseFloat(p.Value) : null;
+    };
+    const getTime = (key) => {
+      const p = data[key];
+      return p ? p.Time : null;
+    };
+
+    // Decode AROW parameters:
+    // Parameter_2071: Distance from Earth surface in thousands of miles
+    // Parameter_2009-2011: Velocity components in ft/s (geocentric)
+    // Parameter_2003-2005: Position (coordinate frame TBD)
+    // Parameter_5016: Distance from Moon in miles
+    const altMiles = getVal('Parameter_2071');
+    const vx_fts = getVal('Parameter_2009');
+    const vy_fts = getVal('Parameter_2010');
+    const vz_fts = getVal('Parameter_2011');
+    const moonDistMiles = getVal('Parameter_5016');
+    const timestamp = getTime('Parameter_2071') || getTime('Parameter_5001');
+
+    if (altMiles === null) return null;
+
+    const altKm = altMiles * 1.60934 * 1000; // thousands of miles to km
+    const rangeKm = altKm + 6371; // approximate geocentric distance
+    const moonDistKm = moonDistMiles ? moonDistMiles * 1.60934 : 384400 - rangeKm;
+
+    let speedMs = 0;
+    if (vx_fts !== null && vy_fts !== null && vz_fts !== null) {
+      const speed_fts = Math.sqrt(vx_fts**2 + vy_fts**2 + vz_fts**2);
+      speedMs = Math.round(speed_fts * 0.3048);
+    }
+
+    // Parse AROW time format "2026:092:00:13:11.667" -> ISO
+    let isoTime = null;
+    if (timestamp) {
+      const match = timestamp.match(/(\d{4}):(\d{3}):(\d{2}):(\d{2}):(\d{2})/);
+      if (match) {
+        const [, year, doy, hh, mm, ss] = match;
+        const d = new Date(Date.UTC(parseInt(year), 0, parseInt(doy), parseInt(hh), parseInt(mm), parseInt(ss)));
+        isoTime = d.toISOString();
+      }
+    }
+
+    const telemetry = {
+      source: 'NASA AROW (real-time)',
+      is_realtime: true,
+      data_age_minutes: 0,
+      spacecraft: 'Artemis II / Orion MPCV',
+      timestamp: isoTime || new Date().toISOString(),
+      altitude_km: Math.round(altKm),
+      altitude_miles: Math.round(altMiles * 1000),
+      speed_m_s: speedMs,
+      speed_mph: vx_fts !== null ? Math.round(Math.sqrt(vx_fts**2 + vy_fts**2 + vz_fts**2) * 0.681818) : 0,
+      range_from_earth_km: Math.round(rangeKm),
+      range_from_moon_km: Math.round(moonDistKm),
+      position: { x: 0, y: 0, z: 0, unit: 'km' }, // AROW doesn't give XYZ directly
+      velocity: { vx: 0, vy: 0, vz: 0, unit: 'km/s' },
+    };
+
+    setCache('arow', JSON.stringify(telemetry));
+    console.log(`[AROW] LIVE: ALT ${telemetry.altitude_miles} mi (${telemetry.altitude_km} km) | VEL ${telemetry.speed_mph} mph (${telemetry.speed_m_s} m/s)`);
+    return telemetry;
+  } catch (err) {
+    console.error(`[AROW] Error: ${err.message}`);
+    return null;
+  }
+}
+
 async function handleHorizons() {
   const cached = getCached('horizons', 3600000);
   if (cached) { console.log('[CACHE] horizons'); return { status: 200, data: cached }; }
@@ -152,6 +232,18 @@ async function handleOrionTelemetry() {
   // Window 4: from known earliest possible start
   windows.push([new Date('2026-04-02T02:00:00Z'), new Date('2026-04-02T03:00:00Z')]);
 
+  // 1. Try AROW first (real-time, ~2s updates)
+  const arowData = await fetchAROW();
+  if (arowData) {
+    const out = JSON.stringify(arowData);
+    setCache('orion', out);
+    // Store in DB
+    if (HAS_DB) db.storeTelemetry(arowData).catch(e => console.error('[DB]', e.message));
+    return { status: 200, data: out };
+  }
+  console.log('[AROW] unavailable, falling back to Horizons');
+
+  // 2. Fall back to JPL Horizons
   console.log('[PROXY] /api/orion -> JPL Horizons (Artemis II spacecraft -1024)');
 
   try {
