@@ -1443,79 +1443,78 @@ const CREW = [
 ];
 
 // ═══════════ TIMELINE DATA ═══════════
+// Artemis II mission timeline based on NASA mission plan (April 2026)
+// Launch: April 1, 2026, 6:35 PM EDT (22:35 UTC)
 const TIMELINE = [
   {
-    day: 0, title: 'LAUNCH', date: '2026-04-01 | L+00:00:00',
+    day: 0, title: 'LAUNCH & ORBIT', date: '2026-04-01 | Day 0',
     events: [
-      { time: 'T-00:10', desc: 'Final poll — all stations GO', tag: 'CRITICAL' },
-      { time: 'T-00:00', desc: 'SLS Block 1 ignition, LC-39B, KSC', tag: 'CRITICAL' },
+      { time: 'T+00:00', desc: 'SLS Block 1 liftoff from LC-39B, KSC', tag: 'CRITICAL' },
       { time: 'T+00:02', desc: 'SRB separation — 3.6 million lbs thrust', tag: 'NOMINAL' },
-      { time: 'T+00:08', desc: 'Core stage MECO, stage separation', tag: 'NOMINAL' },
-      { time: 'T+00:18', desc: 'ICPS single-engine burn — parking orbit 185 km', tag: 'NOMINAL' },
-      { time: 'T+01:30', desc: 'Systems checkout in parking orbit', tag: 'NOMINAL' },
-      { time: 'T+01:57', desc: 'TLI burn — ICPS pushes Orion toward the Moon', tag: 'CRITICAL' },
-      { time: 'T+02:05', desc: 'ICPS separation — Orion free-flight begins', tag: 'NOMINAL' },
+      { time: 'T+00:08', desc: 'Core stage MECO and separation', tag: 'NOMINAL' },
+      { time: 'T+00:25', desc: 'Orion on-orbit checkout begins', tag: 'NOMINAL' },
+      { time: 'T+03:57', desc: 'Perigee raise burn — raises low point of orbit', tag: 'CRITICAL' },
     ]
   },
-  { day: 1, title: 'OUTBOUND COAST', date: '2026-04-02 | L+01:00:00', events: [
-    { time: 'MET 04h', desc: 'First mid-course correction burn (OMS-1)', tag: 'NOMINAL' },
-    { time: 'MET 08h', desc: 'Crew cabin pressure check and suit doff', tag: 'NOMINAL' },
-    { time: 'MET 12h', desc: 'Star tracker calibration and nav update', tag: 'SCIENCE' },
-    { time: 'MET 18h', desc: 'Crew sleep period — first rest cycle', tag: 'NOMINAL' },
+  { day: 1, title: 'EARTH ORBIT & TLI', date: '2026-04-02 | Day 1', events: [
+    { time: 'MET 18h', desc: 'Systems checkout and crew rest period', tag: 'NOMINAL' },
+    { time: 'MET 22h', desc: 'TLI burn preparations — attitude alignment', tag: 'CRITICAL' },
+    { time: 'MET 25h14m', desc: 'TLI BURN (~5.5 min) — commits to lunar flyby trajectory', tag: 'CRITICAL' },
+    { time: 'MET 26h', desc: 'Post-TLI checkout — free-return trajectory confirmed', tag: 'NOMINAL' },
   ]},
-  { day: 2, title: 'DEEP SPACE TRANSIT', date: '2026-04-03 | L+02:00:00', events: [
-    { time: 'MET 30h', desc: 'Systems health check — all subsystems nominal', tag: 'NOMINAL' },
-    { time: 'MET 36h', desc: 'Mid-course correction burn 2 (OMS-2)', tag: 'NOMINAL' },
-    { time: 'MET 40h', desc: 'Radiation environment monitoring begins', tag: 'SCIENCE' },
-    { time: 'MET 44h', desc: 'Crew exercise period and medical checks', tag: 'NOMINAL' },
+  { day: 2, title: 'OUTBOUND COAST', date: '2026-04-03 | Day 2', events: [
+    { time: 'MET 40h', desc: 'Crew cabin pressure check and suit doff', tag: 'NOMINAL' },
+    { time: 'MET 48h', desc: 'Star tracker calibration and nav update', tag: 'SCIENCE' },
+    { time: 'MET 52h', desc: 'Mid-course correction burn — trajectory fine-tune', tag: 'CRITICAL' },
+    { time: 'MET 58h', desc: 'Large mid-course correction burn', tag: 'CRITICAL' },
   ]},
-  { day: 3, title: 'OUTBOUND TRANSIT', date: '2026-04-04 | L+03:00:00', events: [
-    { time: 'MET 54h', desc: 'Orion passes 200,000 km from Earth', tag: 'NOMINAL' },
-    { time: 'MET 60h', desc: 'Communication handoff: TDRS to DSN', tag: 'NOMINAL' },
-    { time: 'MET 66h', desc: 'Crew photo/video session — Earth & Moon views', tag: 'SCIENCE' },
-    { time: 'MET 70h', desc: 'Navigation state update via DSN tracking', tag: 'NOMINAL' },
+  { day: 3, title: 'DEEP SPACE TRANSIT', date: '2026-04-04 | Day 3', events: [
+    { time: 'MET 60h', desc: 'Rate-gyro wheel checkout begins', tag: 'NOMINAL' },
+    { time: 'MET 66h', desc: 'Long-duration Earth-to-Moon coast phase', tag: 'NOMINAL' },
+    { time: 'MET 70h', desc: 'Crew exercise, medical checks, Earth/Moon photography', tag: 'SCIENCE' },
+    { time: 'MET 72h', desc: 'Deep-space radiation monitoring', tag: 'SCIENCE' },
   ]},
-  { day: 4, title: 'LUNAR APPROACH', date: '2026-04-05 | L+04:00:00', events: [
-    { time: 'MET 80h', desc: 'Lunar gravity influence begins', tag: 'NOMINAL' },
-    { time: 'MET 88h', desc: 'Approach correction burn (OMS-3)', tag: 'NOMINAL' },
-    { time: 'MET 92h', desc: 'Far-side communication blackout prep', tag: 'CRITICAL' },
-    { time: 'MET 95h', desc: 'Farside flyby trajectory confirmed', tag: 'CRITICAL' },
+  { day: 4, title: 'LUNAR APPROACH', date: '2026-04-05 | Day 4', events: [
+    { time: 'MET 79h', desc: 'Lunar orbit insertion (LOI) burn — powered flyby begins', tag: 'CRITICAL' },
+    { time: 'MET 80h', desc: 'Orion enters lunar gravitational influence', tag: 'NOMINAL' },
+    { time: 'MET 88h', desc: 'Approach correction burn', tag: 'NOMINAL' },
+    { time: 'MET 92h', desc: 'Far-side communication blackout preparation', tag: 'CRITICAL' },
   ]},
-  { day: 5, title: 'LUNAR FLYBY', date: '2026-04-06 | L+05:00:00', events: [
-    { time: 'MET 100h', desc: 'CLOSEST APPROACH — ~130 km above lunar surface', tag: 'CRITICAL' },
-    { time: 'MET 100h', desc: 'Farside communication blackout (~30 min)', tag: 'CRITICAL' },
-    { time: 'MET 101h', desc: 'Signal reacquisition — crew reports nominal', tag: 'NOMINAL' },
-    { time: 'MET 104h', desc: 'Powered flyby burn — return trajectory injection', tag: 'CRITICAL' },
-    { time: 'MET 108h', desc: 'Lunar surface photography and observation', tag: 'SCIENCE' },
+  { day: 5, title: 'LUNAR FLYBY', date: '2026-04-06 | Day 5', events: [
+    { time: 'MET 96h', desc: 'CLOSEST APPROACH — ~6,400 mi (10,300 km) from lunar surface', tag: 'CRITICAL' },
+    { time: 'MET 96h', desc: 'Far-side pass — radio blackout (~30 min)', tag: 'CRITICAL' },
+    { time: 'MET 97h', desc: 'Signal reacquisition — crew reports nominal', tag: 'NOMINAL' },
+    { time: 'MET 100h', desc: 'Housekeeping burns — fine-tune return trajectory', tag: 'NOMINAL' },
+    { time: 'MET 104h', desc: 'Lunar surface photography and observation', tag: 'SCIENCE' },
   ]},
-  { day: 6, title: 'FREE-RETURN ARC', date: '2026-04-07 | L+06:00:00', events: [
-    { time: 'MET 120h', desc: 'Free-return trajectory — furthest from Moon', tag: 'NOMINAL' },
-    { time: 'MET 128h', desc: 'Deep-space radiation measurements', tag: 'SCIENCE' },
-    { time: 'MET 132h', desc: 'Mid-course correction (OMS-4)', tag: 'NOMINAL' },
+  { day: 6, title: 'RETURN BEGINS', date: '2026-04-07 | Day 6', events: [
+    { time: 'MET 120h', desc: 'On free-return arc heading back to Earth', tag: 'NOMINAL' },
+    { time: 'MET 128h', desc: 'Deep-space radiation exposure measurements', tag: 'SCIENCE' },
+    { time: 'MET 132h', desc: 'Return trajectory correction burn', tag: 'NOMINAL' },
   ]},
-  { day: 7, title: 'RETURN COAST I', date: '2026-04-08 | L+07:00:00', events: [
-    { time: 'MET 148h', desc: 'Life support consumables assessment', tag: 'NOMINAL' },
+  { day: 7, title: 'RETURN COAST', date: '2026-04-08 | Day 7', events: [
+    { time: 'MET 148h', desc: 'Spacecraft health checks and systems testing', tag: 'NOMINAL' },
     { time: 'MET 156h', desc: 'Crew exercise and medical monitoring', tag: 'NOMINAL' },
-    { time: 'MET 160h', desc: 'Guidance platform realignment', tag: 'NOMINAL' },
+    { time: 'MET 160h', desc: 'Communications tests with DSN', tag: 'NOMINAL' },
   ]},
-  { day: 8, title: 'RETURN COAST II', date: '2026-04-09 | L+08:00:00', events: [
-    { time: 'MET 172h', desc: 'Final mid-course correction (OMS-5)', tag: 'NOMINAL' },
+  { day: 8, title: 'RETURN COAST II', date: '2026-04-09 | Day 8', events: [
+    { time: 'MET 172h', desc: 'Double-sized mid-course correction burn', tag: 'CRITICAL' },
     { time: 'MET 180h', desc: 'Entry corridor verification', tag: 'CRITICAL' },
-    { time: 'MET 188h', desc: 'Crew stows cabin for re-entry', tag: 'NOMINAL' },
+    { time: 'MET 188h', desc: 'Crew begins stowing cabin for re-entry', tag: 'NOMINAL' },
   ]},
-  { day: 9, title: 'ENTRY PREP', date: '2026-04-10 | L+09:00:00', events: [
+  { day: 9, title: 'ENTRY PREP', date: '2026-04-10 | Day 9', events: [
     { time: 'MET 200h', desc: 'Service Module separation', tag: 'CRITICAL' },
     { time: 'MET 204h', desc: 'CM RCS checkout and attitude alignment', tag: 'NOMINAL' },
     { time: 'MET 208h', desc: 'Crew suits up — cabin pressure verified', tag: 'CRITICAL' },
     { time: 'MET 212h', desc: 'Deorbit/entry attitude established', tag: 'CRITICAL' },
   ]},
-  { day: 10, title: 'SPLASHDOWN', date: '2026-04-11 | L+10:12:00', events: [
-    { time: 'MET 240h', desc: 'Entry Interface — 120 km, Mach 32', tag: 'CRITICAL' },
-    { time: 'MET+3m', desc: 'Peak heating — 2,760 °C heat shield', tag: 'CRITICAL' },
+  { day: 10, title: 'RE-ENTRY & SPLASHDOWN', date: '2026-04-11 | Day 10', events: [
+    { time: 'MET 240h', desc: 'Entry Interface — 120 km altitude, Mach 32', tag: 'CRITICAL' },
+    { time: 'MET+3m', desc: 'Peak heating — heat shield reaches 2,760 °C', tag: 'CRITICAL' },
     { time: 'MET+8m', desc: 'Drogue chute deployment — Mach 1.4', tag: 'CRITICAL' },
     { time: 'MET+10m', desc: 'Main parachutes — 3x 116-ft canopies', tag: 'CRITICAL' },
-    { time: 'MET+14m', desc: 'SPLASHDOWN — Pacific Ocean', tag: 'CRITICAL' },
-    { time: 'MET+60m', desc: 'USS Portland crew recovery', tag: 'NOMINAL' },
+    { time: 'MET+14m', desc: 'SPLASHDOWN — Pacific Ocean recovery zone', tag: 'CRITICAL' },
+    { time: 'MET+60m', desc: 'USS Portland (LPD-27) crew recovery', tag: 'NOMINAL' },
   ]}
 ];
 
@@ -1758,11 +1757,18 @@ function renderTimeline() {
   // The phase from Horizons telemetry is the source of truth
   const livePhase = document.getElementById('tPhase')?.textContent || '';
   const phaseToDay = {
-    'LAUNCH / ASCENT': 0, 'PARKING ORBIT': 0, 'TRANS-LUNAR INJECTION': 0, 'EARTH ORBIT': 0,
-    'OUTBOUND COAST': 1, 'DEEP SPACE TRANSIT': 2, 'OUTBOUND TRANSIT': 3,
-    'LUNAR APPROACH': 4, 'LUNAR FLYBY': 5, 'FREE-RETURN ARC': 6,
-    'INBOUND COAST': 7, 'RETURN COAST': 8, 'ENTRY PREP': 9,
-    'RE-ENTRY': 10, 'SPLASHDOWN': 10
+    'LAUNCH / ASCENT': 0,
+    'EARTH ORBIT': missionElapsedHours < 25 ? 0 : 1, // Day 0 early, Day 1 pre-TLI
+    'TRANS-LUNAR INJECTION': 1,
+    'OUTBOUND COAST': 2,
+    'DEEP SPACE TRANSIT': 3,
+    'LUNAR APPROACH': 4,
+    'LUNAR FLYBY': 5,
+    'FREE-RETURN ARC': 6,
+    'RETURN COAST': 7,
+    'ENTRY PREP': 9,
+    'RE-ENTRY': 10,
+    'SPLASHDOWN': 10
   };
   // Use phase-based day if available, otherwise fall back to MET calendar day
   let currentDay;
@@ -1770,10 +1776,6 @@ function renderTimeline() {
     currentDay = phaseToDay[livePhase];
   } else {
     currentDay = isFlying ? Math.floor(Math.max(0, Math.min(missionElapsedDays, 10))) : -1;
-  }
-  // Also advance if MET hours clearly put us past launch day events
-  if (isFlying && currentDay === 0 && missionElapsedHours > 2.5) {
-    currentDay = Math.max(currentDay, 1); // Past ICPS sep = outbound coast
   }
 
   container.innerHTML = TIMELINE.map((day, i) => {
@@ -1938,9 +1940,9 @@ const ctx = canvas.getContext('2d');
 let animationProgress = 0;
 
 const missionPhases = [
-  'LAUNCH / ASCENT', 'PARKING ORBIT', 'TRANS-LUNAR INJECTION', 'EARTH ORBIT',
+  'LAUNCH / ASCENT', 'EARTH ORBIT', 'TRANS-LUNAR INJECTION',
   'OUTBOUND COAST', 'LUNAR APPROACH', 'LUNAR FLYBY',
-  'FREE-RETURN ARC', 'INBOUND COAST', 'ENTRY PREP',
+  'FREE-RETURN ARC', 'RETURN COAST', 'ENTRY PREP',
   'RE-ENTRY', 'SPLASHDOWN'
 ];
 
@@ -2000,26 +2002,42 @@ async function fetchOrionTelemetry() {
       return;
     }
 
-    // Determine mission phase from altitude, range, and velocity
-    // Escape velocity = sqrt(2 * GM / r) where GM = 398600 km³/s², r = Earth center distance
+    // Determine mission phase from telemetry + physics
+    // Escape velocity = sqrt(2 * GM / r), GM = 398600 km³/s²
+    // Mission profile: Launch → Earth Orbit (~25h) → TLI burn → Outbound → Lunar Flyby → Return
     const alt = data.altitude_km;
     const range = data.range_from_earth_km;
     const speed = data.speed_m_s / 1000; // km/s
-    const escapeVel = Math.sqrt(2 * 398600 / range); // km/s at current distance
-    const isEscaping = speed > escapeVel * 0.95; // within 5% of escape = on lunar trajectory
+    const escapeVel = Math.sqrt(2 * 398600 / range);
+    const isEscaping = speed > escapeVel * 0.92; // on hyperbolic/translunar trajectory
+    const moonDist = data.range_from_moon_km;
+    const isReturning = data.range_rate_km_s < 0;
 
     let phase;
-    if (alt < 185) phase = 'LAUNCH / ASCENT';
-    else if (alt < 300 && speed < 8.0) phase = 'PARKING ORBIT';
-    else if (alt < 300 && speed >= 10.0) phase = 'TRANS-LUNAR INJECTION';
-    else if (!isEscaping && range < 50000) phase = 'EARTH ORBIT';
-    else if (isEscaping && range < 200000) phase = 'OUTBOUND COAST';
-    else if (isEscaping && range < 350000) phase = 'LUNAR APPROACH';
-    else if (data.range_from_moon_km < 50000) phase = 'LUNAR FLYBY';
-    else if (data.range_rate_km_s < 0 && range > 300000) phase = 'FREE-RETURN ARC';
-    else if (data.range_rate_km_s < 0) phase = 'INBOUND COAST';
-    else if (isEscaping) phase = 'OUTBOUND COAST';
-    else phase = 'EARTH ORBIT';
+    if (alt < 185) {
+      phase = 'LAUNCH / ASCENT';
+    } else if (!isEscaping && range < 80000) {
+      // Bound orbit — could be parking orbit, perigee raise, or pre-TLI checkout
+      // TLI happens at ~MET 25h14m. Before that, we're in Earth orbit.
+      phase = 'EARTH ORBIT';
+    } else if (isEscaping && range < 80000) {
+      // Just escaped — TLI burn in progress or just completed
+      phase = 'TRANS-LUNAR INJECTION';
+    } else if (isEscaping && !isReturning && moonDist > 50000) {
+      // Heading outbound toward Moon
+      if (range < 250000) phase = 'OUTBOUND COAST';
+      else phase = 'LUNAR APPROACH';
+    } else if (moonDist <= 50000) {
+      phase = 'LUNAR FLYBY';
+    } else if (isReturning && moonDist < 150000) {
+      phase = 'FREE-RETURN ARC';
+    } else if (isReturning && range < 50000) {
+      phase = 'ENTRY PREP';
+    } else if (isReturning) {
+      phase = 'RETURN COAST';
+    } else {
+      phase = 'OUTBOUND COAST'; // fallback
+    }
 
     document.getElementById('tPhase').textContent = phase;
     document.getElementById('phaseLabel').textContent = 'PHASE: ' + phase;
@@ -2072,14 +2090,11 @@ function generateNarration(data, phase) {
     case 'LAUNCH / ASCENT':
       return `SLS Block 1 is powering Orion through the atmosphere at ${v(velMph + ' mph')}. Altitude ${v(altMi + ' miles')} and climbing. Targeting ${v('185 km')} parking orbit insertion.`;
 
-    case 'PARKING ORBIT':
-      return `Orion is in a ${v('185 km')} parking orbit at ${v(velMph + ' mph')}, completing systems checkout before Trans-Lunar Injection. The crew is verifying all spacecraft systems are nominal for the burn to the Moon.`;
-
     case 'TRANS-LUNAR INJECTION':
-      return `${p('TLI BURN IN PROGRESS')} — ICPS is firing to accelerate Orion from orbital velocity to translunar trajectory. Speed ${v(velMph + ' mph')} (${v(velKms + ' km/s')}), targeting escape velocity of ${v(escVelKms + ' km/s')}.`;
+      return `${p('TLI BURN')} — Orion's main engine is firing for ~5.5 minutes to commit the crew to the lunar flyby trajectory. Speed ${v(velMph.toLocaleString() + ' mph')} (${v(velKms + ' km/s')}), targeting escape velocity of ${v(escVelKms + ' km/s')}.`;
 
     case 'EARTH ORBIT':
-      return `Orion is in a bound elliptical orbit at ${v(altMi + ' miles')} (${v(alt.toLocaleString() + ' km')}) altitude, traveling ${v(velMph.toLocaleString() + ' mph')} (${v(velKms + ' km/s')}). Current speed is ${v(pctSpeed + '%')} of escape velocity (${v(escVelKms + ' km/s')}). ${moonDist > 300000 ? `The Moon is ${v(moonDist.toLocaleString() + ' km')} away.` : ''}`;
+      return `Orion is in a bound elliptical Earth orbit at ${v(altMi.toLocaleString() + ' miles')} (${v(alt.toLocaleString() + ' km')}) altitude, traveling ${v(velMph.toLocaleString() + ' mph')} (${v(velKms + ' km/s')}). Current speed is ${v(pctSpeed + '%')} of escape velocity (${v(escVelKms + ' km/s')}). The TLI burn to the Moon is planned for ~T+25h 14m. The Moon is ${v(moonDist.toLocaleString() + ' km')} away.`;
 
     case 'OUTBOUND COAST':
       return `Orion is coasting toward the Moon at ${v(velMph.toLocaleString() + ' mph')}, now ${v(pctToMoon + '%')} of the way to lunar distance. Altitude ${v(altMi.toLocaleString() + ' miles')} (${v(alt.toLocaleString() + ' km')}). The Moon is ${v(moonDist.toLocaleString() + ' km')} ahead. The crew is conducting deep-space systems checks.`;
@@ -2093,8 +2108,8 @@ function generateNarration(data, phase) {
     case 'FREE-RETURN ARC':
       return `Orion is on the free-return arc, using lunar gravity to slingshot back toward Earth. Range from Moon: ${v(moonDist.toLocaleString() + ' km')}. Speed ${v(velMph.toLocaleString() + ' mph')}. The spacecraft is now heading home.`;
 
-    case 'INBOUND COAST':
-      return `Orion is coasting back to Earth at ${v(velMph.toLocaleString() + ' mph')}, now ${v(range.toLocaleString() + ' km')} from home. The crew is preparing for re-entry. Speed will increase as Earth's gravity accelerates the spacecraft.`;
+    case 'RETURN COAST':
+      return `Orion is coasting back to Earth at ${v(velMph.toLocaleString() + ' mph')}, now ${v(range.toLocaleString() + ' km')} from home. The crew is conducting systems testing and communications checks. Speed will increase as Earth's gravity accelerates the spacecraft.`;
 
     case 'ENTRY PREP':
       return `Orion is preparing for atmospheric re-entry. Service module separation imminent. The crew is suited up and the heat shield will face temperatures up to ${v('2,760°C')} during re-entry at ${v('Mach 32')}.`;
@@ -2251,7 +2266,7 @@ function drawMap(timestamp) {
 
   // Determine current orbital state from live data
   const currentPhase = document.getElementById('tPhase')?.textContent || '';
-  const isInEarthOrbit = currentPhase === 'EARTH ORBIT' || currentPhase === 'PARKING ORBIT';
+  const isInEarthOrbit = currentPhase === 'EARTH ORBIT' || currentPhase === 'LAUNCH / ASCENT';
 
   // Elliptical orbit around Earth (exaggerated for visibility)
   // Perigee close to Earth, apogee extends outward
