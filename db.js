@@ -146,12 +146,12 @@ async function getTelemetryNearTime(targetTime) {
 
 async function storeEvent(type, description, source, rawData) {
   try {
+    const fiveMinAgo = new Date(Date.now() - 300000);
     const existing = await pool.query(
-      'SELECT id FROM mission_events WHERE event_type = $1 AND description = $2 ORDER BY timestamp DESC LIMIT 1',
-      [type, description]
+      'SELECT id FROM mission_events WHERE event_type = $1 AND description = $2 AND timestamp > $3 LIMIT 1',
+      [type, description, fiveMinAgo]
     );
-    // Don't store exact duplicates within 5 minutes
-    if (existing.rows.length > 0) return;
+    if (existing.rows.length > 0) return; // duplicate within 5 min window
 
     await pool.query(
       'INSERT INTO mission_events (event_type, description, source, raw_data) VALUES ($1, $2, $3, $4)',

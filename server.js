@@ -15,7 +15,15 @@ function getCached(key, ttlMs = 300000) {
   if (e && Date.now() - e.ts < ttlMs) return e.data;
   return null;
 }
-function setCache(key, data) { cache[key] = { data, ts: Date.now() }; }
+function setCache(key, data) {
+  cache[key] = { data, ts: Date.now() };
+  // Evict expired entries if cache grows large
+  const keys = Object.keys(cache);
+  if (keys.length > 50) {
+    const now = Date.now();
+    keys.forEach(k => { if (now - cache[k].ts > 3600000) delete cache[k]; });
+  }
+}
 
 function proxyFetch(targetUrl, timeout = 15000) {
   return new Promise((resolve, reject) => {
@@ -68,9 +76,9 @@ async function handleLaunch(pathname) {
         const data = JSON.parse(r.data);
         const artemis = data.results?.find(l => l.name?.toLowerCase().includes('artemis'));
         if (artemis) {
-          db.storeEvent('launch_status', `${artemis.status?.name || 'unknown'} — NET: ${artemis.net}`, 'll2', { status: artemis.status, net: artemis.net }).catch(() => {});
+          db.storeEvent('launch_status', `${artemis.status?.name || 'unknown'} — NET: ${artemis.net}`, 'll2', { status: artemis.status, net: artemis.net }).catch(e => console.warn('[DB] Event store:', e.message));
         }
-      } catch {}
+      } catch (e) { console.warn('[LAUNCH] Parse error:', e.message); }
     }
     return { status: 200, data: r.data };
   }

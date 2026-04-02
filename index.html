@@ -964,6 +964,13 @@
 // All API calls route through local server.js proxy — no CORS issues
 const API_BASE = window.location.origin;
 
+// Sanitize HTML to prevent XSS from API data
+function esc(text) {
+  const d = document.createElement('div');
+  d.textContent = text;
+  return d.innerHTML;
+}
+
 // Will be overwritten by live API data
 let LAUNCH_EPOCH = null;
 let launchStatus = 'FETCHING';
@@ -1233,14 +1240,14 @@ async function fetchAPOD() {
     const container = document.getElementById('apodContainer');
     if (data.media_type === 'image') {
       container.innerHTML = `
-        <img src="${data.url}" alt="${data.title}">
-        <div class="apod-title">${data.title}</div>
-        <div class="apod-desc">${data.explanation.substring(0, 200)}...</div>
+        <img src="${esc(data.url)}" alt="${esc(data.title)}">
+        <div class="apod-title">${esc(data.title)}</div>
+        <div class="apod-desc">${esc(data.explanation.substring(0, 200))}...</div>
       `;
     } else {
       container.innerHTML = `
-        <div class="apod-title">${data.title}</div>
-        <div class="apod-desc">${data.explanation.substring(0, 300)}...</div>
+        <div class="apod-title">${esc(data.title)}</div>
+        <div class="apod-desc">${esc(data.explanation.substring(0, 300))}...</div>
       `;
     }
     return true;
@@ -1278,7 +1285,7 @@ async function fetchNeoWs() {
         return `
           <div class="neo-item">
             <div>
-              <span class="neo-name">${neo.name.replace(/[()]/g, '')}</span>
+              <span class="neo-name">${esc(neo.name.replace(/[()]/g, ''))}</span>
               <span class="${hazard ? 'neo-hazard' : 'neo-safe'}">${hazard ? 'PHA' : 'SAFE'}</span>
             </div>
             <div style="text-align:right">
@@ -1313,7 +1320,7 @@ async function fetchDONKI() {
       cmes.slice(-3).forEach(cme => {
         items.push({
           time: new Date(cme.startTime).toISOString().replace('T', ' ').substring(0, 16),
-          text: `CME detected — ${cme.note ? cme.note.substring(0, 80) : 'Coronal mass ejection observed'}`,
+          text: `CME detected — ${cme.note ? esc(cme.note.substring(0, 80)) : 'Coronal mass ejection observed'}`,
           type: 'CME',
           color: 'var(--terminal-amber)'
         });
@@ -1325,7 +1332,7 @@ async function fetchDONKI() {
       flrs.slice(-3).forEach(flr => {
         items.push({
           time: new Date(flr.beginTime).toISOString().replace('T', ' ').substring(0, 16),
-          text: `Solar flare class ${flr.classType} — ${flr.sourceLocation || 'location TBD'}`,
+          text: `Solar flare class ${esc(flr.classType || '')} — ${esc(flr.sourceLocation || 'location TBD')}`,
           type: flr.classType,
           color: flr.classType?.startsWith('X') ? 'var(--nasa-red)' : 'var(--terminal-amber)'
         });
@@ -1424,14 +1431,16 @@ async function initLiveFeeds() {
 }
 
 async function pollLaunchStatus() {
-  await fetchLaunchData();
-  // If in flight, also fetch live Orion telemetry
-  if (launchStatusCode === 6 || launchStatusCode === 3) {
-    await fetchOrionTelemetry();
+  try {
+    await fetchLaunchData();
+    if (launchStatusCode === 6 || launchStatusCode === 3) {
+      await fetchOrionTelemetry();
+    }
+    document.getElementById('lastUpdate').textContent =
+      `LAST API POLL: ${new Date().toISOString().replace('T', ' ').substring(0, 19)} UTC`;
+  } catch (err) {
+    console.error('[POLL] Error:', err.message);
   }
-  document.getElementById('lastUpdate').textContent =
-    `LAST API POLL: ${new Date().toISOString().replace('T', ' ').substring(0, 19)} UTC`;
-  // Re-poll every 30 seconds
   setTimeout(pollLaunchStatus, 30000);
 }
 
