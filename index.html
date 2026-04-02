@@ -663,6 +663,10 @@
     text-transform: uppercase;
   }
 
+  .loading-digits {
+    opacity: 0.35;
+  }
+
   @keyframes flicker {
     0%, 100% { opacity: 1; }
     92% { opacity: 1; }
@@ -1678,6 +1682,9 @@ function updateClock() {
     return;
   }
 
+  // Launch epoch loaded — stop clock loading animation
+  stopLoadingDigits(metEl);
+
   const elapsedMs = now.getTime() - LAUNCH_EPOCH.getTime();
 
   // Determine state from LL2 status code AND time
@@ -2007,7 +2014,7 @@ function drawMap(timestamp) {
     ctx.stroke();
 
     // Draw orbit trail (green, showing where Orion has been)
-    const orbitProgress = (timestamp / 3000) % 1; // one orbit every 3s (exaggerated speed)
+    const orbitProgress = (timestamp / 30000) % 1; // one orbit every 3s (exaggerated speed)
     const trailLength = 0.7; // 70% of orbit shown as trail
     ctx.save();
     ctx.translate(ellipseCenterX, earthY);
@@ -2109,7 +2116,7 @@ function drawMap(timestamp) {
 
     if (isInEarthOrbit) {
       // EARTH ORBIT: animate on elliptical orbit
-      const orbitAngle = (timestamp / 3000) * Math.PI * 2; // match trail animation speed
+      const orbitAngle = (timestamp / 30000) * Math.PI * 2; // match trail animation speed
       const ex = ellipseRx * Math.cos(orbitAngle);
       const ey = ellipseRy * Math.sin(orbitAngle);
       const rx = ex * Math.cos(ellipseTilt) - ey * Math.sin(ellipseTilt);
@@ -2197,11 +2204,93 @@ function drawMap(timestamp) {
 }
 
 // ═══════════ INIT ═══════════
+// ═══════════ CYCLING DIGITS LOADER ═══════════
+// Shows randomized numbers cycling at low opacity until real data arrives
+const loadingEls = new Set();
+let loadingInterval = null;
+
+function startLoadingDigits() {
+  // Clock
+  const metEl = document.getElementById('metClock');
+  if (metEl && !LAUNCH_EPOCH) loadingEls.add(metEl);
+
+  // Live stat params
+  ['paramAltitude', 'paramVelocity', 'paramRange', 'paramMoonDist'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && el.textContent === '--') loadingEls.add(el);
+  });
+
+  // Telemetry panel
+  ['tAlt', 'tVel', 'tRange', 'tMoonAngle'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && (el.textContent === '-- km' || el.textContent === '-- m/s' || el.textContent === '--')) loadingEls.add(el);
+  });
+
+  if (loadingInterval) return;
+  loadingInterval = setInterval(() => {
+    loadingEls.forEach(el => {
+      if (!el.classList.contains('loading-digits')) el.classList.add('loading-digits');
+      // Generate random digits matching the expected format
+      if (el.id === 'metClock') {
+        const d = () => Math.floor(Math.random() * 10);
+        el.textContent = `${d()}${d()}${d()}:${d()}${d()}:${d()}${d()}:${d()}${d()}`;
+      } else if (el.id?.startsWith('param')) {
+        const len = el.id === 'paramMoonDist' ? 6 : el.id === 'paramRange' ? 5 : 4;
+        let num = '';
+        for (let i = 0; i < len; i++) num += Math.floor(Math.random() * 10);
+        el.textContent = parseInt(num).toLocaleString();
+      } else {
+        // Telemetry values
+        const d = () => Math.floor(Math.random() * 10);
+        el.textContent = `${d()},${d()}${d()}${d()} km`;
+      }
+    });
+  }, 80); // Fast cycling for that retro computer feel
+}
+
+function stopLoadingDigits(el) {
+  loadingEls.delete(el);
+  el.classList.remove('loading-digits');
+  if (loadingEls.size === 0 && loadingInterval) {
+    clearInterval(loadingInterval);
+    loadingInterval = null;
+  }
+}
+
+function stopAllLoading() {
+  loadingEls.forEach(el => el.classList.remove('loading-digits'));
+  loadingEls.clear();
+  if (loadingInterval) { clearInterval(loadingInterval); loadingInterval = null; }
+}
+
+// Patch telemetry update to stop loading on those elements
+const origSetText = (id, val) => {
+  const el = document.getElementById(id);
+  if (el) { stopLoadingDigits(el); }
+};
+
+// Hook into the existing telemetry display updates
+const _origFetchOrion = fetchOrionTelemetry;
+fetchOrionTelemetry = async function() {
+  await _origFetchOrion();
+  // Stop loading on all telemetry elements that now have real data
+  if (liveOrionData) {
+    ['tAlt', 'tVel', 'tRange', 'tMoonAngle', 'paramAltitude', 'paramVelocity', 'paramRange', 'paramMoonDist'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) stopLoadingDigits(el);
+    });
+  }
+};
+
 function init() {
   renderTimeline();
   renderCrew();
   resizeCanvas();
   window.addEventListener('resize', resizeCanvas);
+
+  // Start cycling digits animation before data loads
+  startLoadingDigits();
+
   setInterval(updateClock, 1000);
   updateClock();
   requestAnimationFrame(drawMap);
