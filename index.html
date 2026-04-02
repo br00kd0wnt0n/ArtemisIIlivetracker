@@ -1671,17 +1671,22 @@ async function fetchOrionTelemetry() {
       renderTimeline();
     }
 
-    // Update telemetry display with data + age indicator
-    const ageColor = data.is_realtime ? 'var(--terminal-green)' : 'var(--terminal-amber)';
-    document.getElementById('tAlt').innerHTML = `${data.altitude_km.toLocaleString()} km`;
-    document.getElementById('tVel').textContent = data.speed_m_s.toLocaleString() + ' m/s';
-    document.getElementById('tRange').textContent = data.range_from_earth_km.toLocaleString() + ' km';
+    // Update telemetry display
+    // If data is predicted (future), show with warning — don't override map position
+    const isPredicted = data.data_age_minutes > 5; // data is from the future or very stale
+    const label = isPredicted ? ' <span style="font-size:8px;color:var(--terminal-amber)">[PREDICTED]</span>' : '';
+    document.getElementById('tAlt').innerHTML = `${data.altitude_km.toLocaleString()} km${label}`;
+    document.getElementById('tVel').innerHTML = `${data.speed_m_s.toLocaleString()} m/s${label}`;
+    document.getElementById('tRange').innerHTML = `${data.range_from_earth_km.toLocaleString()} km${label}`;
     document.getElementById('tMoonAngle').textContent = data.range_from_moon_km.toLocaleString() + ' km';
 
-    // Show data age warning in phase label if not real-time
-    if (!data.is_realtime) {
+    // If predicted, don't use this data for map plotting — clear liveOrionData so map doesn't show wrong position
+    if (isPredicted) {
+      liveOrionData = null; // don't plot predicted position on map
       document.getElementById('phaseLabel').innerHTML =
-        `PHASE: <span style="color:var(--terminal-amber)">${document.getElementById('tPhase').textContent}</span> <span style="font-size:9px;color:var(--terminal-amber)">[DATA FROM ${data.timestamp} TDB]</span>`;
+        `<span style="color:var(--terminal-amber)">TELEMETRY PREDICTED — HORIZONS DATA FROM ${data.timestamp} TDB</span>`;
+      console.log(`[ORION] Data is ${Math.abs(data.data_age_minutes)} min ${data.data_age_minutes > 0 ? 'ahead' : 'old'} — not plotting on map`);
+      return;
     }
 
     // Determine mission phase from altitude and range
