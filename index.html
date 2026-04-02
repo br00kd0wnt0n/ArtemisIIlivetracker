@@ -596,28 +596,62 @@
     animation: pulse-dot 1.5s ease-in-out infinite;
   }
 
-  /* ─── MISSION PARAMS FOOTER ─── */
+  /* ─── FLIGHT STATS PANEL ─── */
   .mission-params {
     grid-column: 1 / -1;
     display: grid;
     grid-template-columns: repeat(6, 1fr);
     gap: 1px;
     background: var(--panel-border);
-    border-top: 2px solid var(--nasa-red);
+    border-top: 2px solid var(--nasa-gold);
   }
 
   .param-card {
     background: var(--panel-bg);
-    padding: 14px 16px;
+    padding: 16px 12px 12px;
     text-align: center;
+    position: relative;
+  }
+
+  .param-card.live::before {
+    content: '';
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--terminal-green);
+    box-shadow: 0 0 6px var(--terminal-green);
+    animation: pulse-dot 2s ease-in-out infinite;
   }
 
   .param-value {
     font-family: 'Orbitron', monospace;
-    font-size: 20px;
+    font-size: 22px;
     font-weight: 700;
     color: var(--terminal-green);
-    text-shadow: 0 0 8px rgba(51,255,51,0.3);
+    text-shadow: 0 0 10px rgba(51,255,51,0.4);
+    transition: color 0.3s;
+    line-height: 1.2;
+  }
+
+  .param-card.static .param-value {
+    color: var(--nasa-gold);
+    text-shadow: none;
+    font-size: 20px;
+  }
+
+  .param-unit {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--terminal-green);
+    opacity: 0.6;
+    margin-top: 2px;
+  }
+
+  .param-card.static .param-unit {
+    color: var(--nasa-gold);
   }
 
   .param-label {
@@ -625,7 +659,8 @@
     font-size: 9px;
     letter-spacing: 2px;
     color: var(--text-dim);
-    margin-top: 4px;
+    margin-top: 6px;
+    text-transform: uppercase;
   }
 
   @keyframes flicker {
@@ -977,29 +1012,35 @@
 
   <!-- MISSION PARAMS -->
   <div class="mission-params">
-    <div class="param-card">
-      <div class="param-value">10.5</div>
-      <div class="param-label">DURATION (DAYS)</div>
-    </div>
-    <div class="param-card">
-      <div class="param-value" id="paramMoonDist">--</div>
-      <div class="param-label">DIST TO MOON (KM)</div>
-    </div>
-    <div class="param-card">
-      <div class="param-value" id="paramVelocity">--</div>
-      <div class="param-label">VELOCITY (KM/S)</div>
-    </div>
-    <div class="param-card">
+    <div class="param-card live">
       <div class="param-value" id="paramAltitude">--</div>
-      <div class="param-label">ALTITUDE (KM)</div>
+      <div class="param-unit">KM</div>
+      <div class="param-label">ALTITUDE</div>
     </div>
-    <div class="param-card">
-      <div class="param-value">26,000</div>
-      <div class="param-label">ORION MASS (KG)</div>
+    <div class="param-card live">
+      <div class="param-value" id="paramVelocity">--</div>
+      <div class="param-unit">KM/S</div>
+      <div class="param-label">VELOCITY</div>
     </div>
-    <div class="param-card">
+    <div class="param-card live">
+      <div class="param-value" id="paramRange">--</div>
+      <div class="param-unit">KM</div>
+      <div class="param-label">RANGE</div>
+    </div>
+    <div class="param-card live">
+      <div class="param-value" id="paramMoonDist">--</div>
+      <div class="param-unit">KM</div>
+      <div class="param-label">DIST TO MOON</div>
+    </div>
+    <div class="param-card static">
+      <div class="param-value">10.5</div>
+      <div class="param-unit">DAYS</div>
+      <div class="param-label">MISSION DURATION</div>
+    </div>
+    <div class="param-card static">
       <div class="param-value">4</div>
-      <div class="param-label">CREW SIZE</div>
+      <div class="param-unit">CREW</div>
+      <div class="param-label">ABOARD ORION</div>
     </div>
   </div>
 
@@ -1575,13 +1616,9 @@ function renderTimeline() {
     `;
   }).join('');
 
-  // Auto-scroll to current day if not user-selected
-  if (isFlying && currentDay >= 0 && currentDay !== lastAutoTimelineDay && !timelineUserSelected) {
+  // Track current day (no auto-scroll — stays where user left it)
+  if (isFlying && currentDay >= 0) {
     lastAutoTimelineDay = currentDay;
-    const activeEl = container.querySelector('.timeline-day.active');
-    if (activeEl) {
-      activeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
   }
 }
 
@@ -1790,6 +1827,8 @@ async function fetchOrionTelemetry() {
     if (paramVel) paramVel.textContent = (data.speed_m_s / 1000).toFixed(1);
     const paramAlt = document.getElementById('paramAltitude');
     if (paramAlt) paramAlt.textContent = data.altitude_km.toLocaleString();
+    const paramRange = document.getElementById('paramRange');
+    if (paramRange) paramRange.textContent = data.range_from_earth_km.toLocaleString();
 
     // Update mission narrator
     const narratorEl = document.getElementById('narratorText');
