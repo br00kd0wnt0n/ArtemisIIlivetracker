@@ -1455,7 +1455,7 @@ function renderTimeline() {
   // The phase from Horizons telemetry is the source of truth
   const livePhase = document.getElementById('tPhase')?.textContent || '';
   const phaseToDay = {
-    'LAUNCH / ASCENT': 0, 'PARKING ORBIT': 0, 'TRANS-LUNAR INJECTION': 0,
+    'LAUNCH / ASCENT': 0, 'PARKING ORBIT': 0, 'TRANS-LUNAR INJECTION': 0, 'EARTH ORBIT': 0,
     'OUTBOUND COAST': 1, 'DEEP SPACE TRANSIT': 2, 'OUTBOUND TRANSIT': 3,
     'LUNAR APPROACH': 4, 'LUNAR FLYBY': 5, 'FREE-RETURN ARC': 6,
     'INBOUND COAST': 7, 'RETURN COAST': 8, 'ENTRY PREP': 9,
@@ -1631,7 +1631,7 @@ const ctx = canvas.getContext('2d');
 let animationProgress = 0;
 
 const missionPhases = [
-  'LAUNCH / ASCENT', 'PARKING ORBIT', 'TRANS-LUNAR INJECTION',
+  'LAUNCH / ASCENT', 'PARKING ORBIT', 'TRANS-LUNAR INJECTION', 'EARTH ORBIT',
   'OUTBOUND COAST', 'LUNAR APPROACH', 'LUNAR FLYBY',
   'FREE-RETURN ARC', 'INBOUND COAST', 'ENTRY PREP',
   'RE-ENTRY', 'SPLASHDOWN'
@@ -1694,21 +1694,25 @@ async function fetchOrionTelemetry() {
     }
 
     // Determine mission phase from altitude, range, and velocity
-    // TLI is a burn event (~5 min) not a range bracket — use velocity to distinguish
-    // Parking orbit: ~7.8 km/s at ~185 km. After TLI: >10 km/s initially, decelerating outbound
+    // Escape velocity = sqrt(2 * GM / r) where GM = 398600 km³/s², r = Earth center distance
     const alt = data.altitude_km;
     const range = data.range_from_earth_km;
     const speed = data.speed_m_s / 1000; // km/s
+    const escapeVel = Math.sqrt(2 * 398600 / range); // km/s at current distance
+    const isEscaping = speed > escapeVel * 0.95; // within 5% of escape = on lunar trajectory
+
     let phase;
     if (alt < 185) phase = 'LAUNCH / ASCENT';
     else if (alt < 300 && speed < 8.0) phase = 'PARKING ORBIT';
-    else if (alt < 300 && speed >= 10.0) phase = 'TRANS-LUNAR INJECTION'; // TLI burn in progress
-    else if (range < 200000) phase = 'OUTBOUND COAST';
-    else if (range < 350000) phase = 'LUNAR APPROACH';
+    else if (alt < 300 && speed >= 10.0) phase = 'TRANS-LUNAR INJECTION';
+    else if (!isEscaping && range < 50000) phase = 'EARTH ORBIT';
+    else if (isEscaping && range < 200000) phase = 'OUTBOUND COAST';
+    else if (isEscaping && range < 350000) phase = 'LUNAR APPROACH';
     else if (data.range_from_moon_km < 50000) phase = 'LUNAR FLYBY';
     else if (data.range_rate_km_s < 0 && range > 300000) phase = 'FREE-RETURN ARC';
     else if (data.range_rate_km_s < 0) phase = 'INBOUND COAST';
-    else phase = 'OUTBOUND COAST';
+    else if (isEscaping) phase = 'OUTBOUND COAST';
+    else phase = 'EARTH ORBIT';
 
     document.getElementById('tPhase').textContent = phase;
     document.getElementById('phaseLabel').textContent = 'PHASE: ' + phase;
