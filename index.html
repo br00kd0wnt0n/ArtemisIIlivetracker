@@ -439,6 +439,12 @@
     color: var(--nasa-gold);
     margin-bottom: 10px;
     position: relative;
+    overflow: hidden;
+  }
+
+  .crew-avatar svg {
+    width: 100%;
+    height: 100%;
   }
 
   .crew-avatar::after {
@@ -1156,6 +1162,88 @@ function updateLaunchStatusUI(launch) {
 }
 
 // ═══════════ CREW DATA ═══════════
+// Pixel art portraits (16x16 grid, 8-bit retro style based on official NASA crew photos)
+const PIXEL_PORTRAITS = {
+  // Reid Wiseman: brown short hair, square jaw, blue eyes, flight suit
+  RW: `<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <rect x="5" y="1" width="6" height="2" fill="#5C3A1E"/>
+    <rect x="4" y="2" width="8" height="1" fill="#5C3A1E"/>
+    <rect x="4" y="3" width="8" height="1" fill="#5C3A1E"/>
+    <rect x="4" y="4" width="8" height="2" fill="#E8B88A"/>
+    <rect x="3" y="5" width="10" height="1" fill="#E8B88A"/>
+    <rect x="3" y="6" width="10" height="1" fill="#E8B88A"/>
+    <rect x="5" y="5" width="2" height="1" fill="#4A7AB5"/>
+    <rect x="9" y="5" width="2" height="1" fill="#4A7AB5"/>
+    <rect x="7" y="6" width="2" height="1" fill="#D4956A"/>
+    <rect x="6" y="7" width="4" height="1" fill="#C47A5A"/>
+    <rect x="3" y="8" width="10" height="1" fill="#E8B88A"/>
+    <rect x="4" y="9" width="8" height="1" fill="#1B3B6F"/>
+    <rect x="3" y="10" width="10" height="2" fill="#1B3B6F"/>
+    <rect x="2" y="12" width="12" height="4" fill="#1B3B6F"/>
+    <rect x="6" y="9" width="4" height="1" fill="#E8B88A"/>
+  </svg>`,
+  // Victor Glover: dark skin, shaved head, warm brown eyes, flight suit
+  VG: `<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <rect x="5" y="1" width="6" height="1" fill="#3A2518"/>
+    <rect x="4" y="2" width="8" height="1" fill="#3A2518"/>
+    <rect x="4" y="3" width="8" height="1" fill="#8B5E3C"/>
+    <rect x="4" y="4" width="8" height="2" fill="#8B5E3C"/>
+    <rect x="3" y="5" width="10" height="1" fill="#8B5E3C"/>
+    <rect x="3" y="6" width="10" height="1" fill="#8B5E3C"/>
+    <rect x="5" y="5" width="2" height="1" fill="#3D2B1A"/>
+    <rect x="9" y="5" width="2" height="1" fill="#3D2B1A"/>
+    <rect x="7" y="6" width="2" height="1" fill="#6B4430"/>
+    <rect x="6" y="7" width="4" height="1" fill="#5C3A28"/>
+    <rect x="3" y="8" width="10" height="1" fill="#8B5E3C"/>
+    <rect x="4" y="9" width="8" height="1" fill="#1B3B6F"/>
+    <rect x="3" y="10" width="10" height="2" fill="#1B3B6F"/>
+    <rect x="2" y="12" width="12" height="4" fill="#1B3B6F"/>
+    <rect x="6" y="9" width="4" height="1" fill="#8B5E3C"/>
+  </svg>`,
+  // Christina Koch: blonde shoulder-length hair, light skin, blue eyes, flight suit
+  CH: `<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <rect x="5" y="0" width="6" height="1" fill="#C8A455"/>
+    <rect x="4" y="1" width="8" height="1" fill="#C8A455"/>
+    <rect x="3" y="2" width="10" height="1" fill="#C8A455"/>
+    <rect x="3" y="3" width="1" height="5" fill="#C8A455"/>
+    <rect x="12" y="3" width="1" height="5" fill="#C8A455"/>
+    <rect x="4" y="3" width="8" height="1" fill="#C8A455"/>
+    <rect x="4" y="4" width="8" height="2" fill="#F0C8A0"/>
+    <rect x="3" y="5" width="10" height="1" fill="#F0C8A0"/>
+    <rect x="3" y="6" width="10" height="1" fill="#F0C8A0"/>
+    <rect x="5" y="5" width="2" height="1" fill="#4A7AB5"/>
+    <rect x="9" y="5" width="2" height="1" fill="#4A7AB5"/>
+    <rect x="7" y="6" width="2" height="1" fill="#D4A080"/>
+    <rect x="6" y="7" width="4" height="1" fill="#C08070"/>
+    <rect x="3" y="8" width="10" height="1" fill="#F0C8A0"/>
+    <rect x="2" y="8" width="1" height="2" fill="#C8A455"/>
+    <rect x="13" y="8" width="1" height="2" fill="#C8A455"/>
+    <rect x="4" y="9" width="8" height="1" fill="#1B3B6F"/>
+    <rect x="3" y="10" width="10" height="2" fill="#1B3B6F"/>
+    <rect x="2" y="12" width="12" height="4" fill="#1B3B6F"/>
+    <rect x="6" y="9" width="4" height="1" fill="#F0C8A0"/>
+  </svg>`,
+  // Jeremy Hansen: light skin, short dark hair, Canadian, flight suit with CSA patch
+  JH: `<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" style="image-rendering:pixelated">
+    <rect x="5" y="1" width="6" height="2" fill="#2A1A0A"/>
+    <rect x="4" y="2" width="8" height="1" fill="#2A1A0A"/>
+    <rect x="4" y="3" width="8" height="1" fill="#2A1A0A"/>
+    <rect x="4" y="4" width="8" height="2" fill="#E8C8A0"/>
+    <rect x="3" y="5" width="10" height="1" fill="#E8C8A0"/>
+    <rect x="3" y="6" width="10" height="1" fill="#E8C8A0"/>
+    <rect x="5" y="5" width="2" height="1" fill="#4A7A55"/>
+    <rect x="9" y="5" width="2" height="1" fill="#4A7A55"/>
+    <rect x="7" y="6" width="2" height="1" fill="#D4A080"/>
+    <rect x="6" y="7" width="4" height="1" fill="#C08070"/>
+    <rect x="3" y="8" width="10" height="1" fill="#E8C8A0"/>
+    <rect x="4" y="9" width="8" height="1" fill="#1B3B6F"/>
+    <rect x="3" y="10" width="10" height="2" fill="#1B3B6F"/>
+    <rect x="2" y="12" width="12" height="4" fill="#1B3B6F"/>
+    <rect x="6" y="9" width="4" height="1" fill="#E8C8A0"/>
+    <rect x="10" y="10" width="2" height="2" fill="#CC2222"/>
+  </svg>`
+};
+
 const CREW = [
   {
     initials: 'RW', name: 'REID WISEMAN', role: 'COMMANDER',
@@ -1584,7 +1672,7 @@ function renderCrew() {
   const grid = document.getElementById('crewGrid');
   grid.innerHTML = CREW.map((c, i) => `
     <div class="crew-card ${i === 0 ? 'active' : ''}" onclick="selectCrew(this)">
-      <div class="crew-avatar">${c.initials}</div>
+      <div class="crew-avatar">${PIXEL_PORTRAITS[c.initials] || c.initials}</div>
       <div class="crew-name">${c.name}</div>
       <div class="crew-role">${c.role}</div>
       <div class="crew-stats">
