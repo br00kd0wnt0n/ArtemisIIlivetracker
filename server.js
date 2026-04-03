@@ -535,6 +535,32 @@ const server = http.createServer(async (req, res) => {
       else if (pathname === '/api/donki/flr') result = await handleDonki('flr');
       else if (pathname === '/api/horizons') result = await handleHorizons();
       else if (pathname === '/api/orion') result = await handleOrionTelemetry();
+      else if (pathname === '/api/earth-texture') {
+        // Proxy NASA Blue Marble texture to avoid CORS
+        const cached = getCached('earth-tex', 86400000); // 24h cache
+        if (cached) {
+          res.writeHead(200, { 'Content-Type': 'image/jpeg', 'Cache-Control': 'public, max-age=86400' });
+          res.end(Buffer.from(cached, 'binary'));
+          return;
+        }
+        try {
+          const r = await new Promise((resolve, reject) => {
+            https.get('https://eoimages.gsfc.nasa.gov/images/imagerecords/57000/57752/land_shallow_topo_2048.jpg', { timeout: 20000 }, (resp) => {
+              const chunks = [];
+              resp.on('data', c => chunks.push(c));
+              resp.on('end', () => resolve({ status: resp.statusCode, data: Buffer.concat(chunks) }));
+            }).on('error', reject);
+          });
+          if (r.status === 200) {
+            cache['earth-tex'] = { data: r.data.toString('binary'), ts: Date.now() };
+            res.writeHead(200, { 'Content-Type': 'image/jpeg', 'Cache-Control': 'public, max-age=86400' });
+            res.end(r.data);
+          } else {
+            res.writeHead(r.status); res.end();
+          }
+        } catch (e) { res.writeHead(502); res.end(); }
+        return;
+      }
       else if (pathname === '/api/news') result = await handleNews();
       else if (pathname === '/api/history' && HAS_DB) {
         const points = await db.getTelemetryHistory(500);

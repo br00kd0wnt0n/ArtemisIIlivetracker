@@ -213,7 +213,7 @@
     height: 100%;
     object-fit: contain;
     image-rendering: pixelated;
-    border-radius: 50%;
+    border-radius: 14px;
     filter: drop-shadow(0 0 6px rgba(255,255,255,0.2));
   }
 
@@ -1941,8 +1941,7 @@ const canvas = document.getElementById('trackingCanvas');
 
 // Load NASA Blue Marble texture for Earth rendering
 const earthTexture = new Image();
-earthTexture.crossOrigin = 'anonymous';
-earthTexture.src = 'https://eoimages.gsfc.nasa.gov/images/imagerecords/57000/57752/land_shallow_topo_2048.jpg';
+earthTexture.src = `${API_BASE}/api/earth-texture`;
 const ctx = canvas.getContext('2d');
 let animationProgress = 0;
 
