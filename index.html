@@ -2459,18 +2459,6 @@ function drawMap(timestamp) {
   const altText = liveOrionData ? `${liveOrionData.altitude_km.toLocaleString()} km | ${liveOrionData.speed_m_s.toLocaleString()} m/s` : document.getElementById('tAlt').textContent;
   ctx.fillText(altText, orionPos.x + 14, orionPos.y + 4);
 
-  // Draw line from Earth to Orion (range indicator)
-  if (liveOrionData) {
-    ctx.beginPath();
-    ctx.moveTo(earthX + earthR, earthY);
-    ctx.lineTo(orionPos.x, orionPos.y);
-    ctx.strokeStyle = 'rgba(51,255,51,0.15)';
-    ctx.lineWidth = 1;
-    ctx.setLineDash([2, 4]);
-    ctx.stroke();
-    ctx.setLineDash([]);
-  }
-
   // Distance scale
   ctx.font = '9px "Share Tech Mono", monospace'; ctx.fillStyle = 'rgba(100,130,160,0.5)'; ctx.textAlign = 'center';
   const scaleY = h - 20;

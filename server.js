@@ -161,22 +161,33 @@ async function fetchAROW() {
     };
 
     // Decode AROW parameters:
-    // Parameter_2071: Distance from Earth surface in thousands of miles
+    // Parameter_5001/5016: Distance from Earth in miles (primary telemetry)
+    // Parameter_2071: Altitude in thousands of miles (may lag behind)
     // Parameter_2009-2011: Velocity components in ft/s (geocentric)
-    // Parameter_2003-2005: Position (coordinate frame TBD)
-    // Parameter_5016: Distance from Moon in miles
-    const altMiles = getVal('Parameter_2071');
+    const earthDistMiles = getVal('Parameter_5001') || getVal('Parameter_5016');
+    const altThousandsMiles = getVal('Parameter_2071');
     const vx_fts = getVal('Parameter_2009');
     const vy_fts = getVal('Parameter_2010');
     const vz_fts = getVal('Parameter_2011');
-    const moonDistMiles = getVal('Parameter_5016');
-    const timestamp = getTime('Parameter_2071') || getTime('Parameter_5001');
+    const timestamp = getTime('Parameter_5001') || getTime('Parameter_2071');
 
-    if (altMiles === null) return null;
+    if (earthDistMiles === null && altThousandsMiles === null) return null;
 
-    const altKm = altMiles * 1.60934 * 1000; // thousands of miles to km
-    const rangeKm = altKm + 6371; // approximate geocentric distance
-    const moonDistKm = moonDistMiles ? moonDistMiles * 1.60934 : 384400 - rangeKm;
+    // Use earth distance (Parameter_5001) as primary — it's more reliable
+    let rangeKm, altKm, moonDistKm;
+    if (earthDistMiles !== null && earthDistMiles > 100) {
+      // Post-TLI: Parameter_5001 shows Earth distance in miles
+      rangeKm = earthDistMiles * 1.60934;
+      altKm = rangeKm - 6371;
+      moonDistKm = Math.abs(384400 - rangeKm);
+    } else if (altThousandsMiles !== null) {
+      // Early mission / orbit: Parameter_2071 shows altitude in thousands of miles
+      altKm = altThousandsMiles * 1.60934 * 1000;
+      rangeKm = altKm + 6371;
+      moonDistKm = 384400 - rangeKm;
+    } else {
+      return null;
+    }
 
     let speedMs = 0;
     if (vx_fts !== null && vy_fts !== null && vz_fts !== null) {
@@ -202,7 +213,7 @@ async function fetchAROW() {
       spacecraft: 'Artemis II / Orion MPCV',
       timestamp: isoTime || new Date().toISOString(),
       altitude_km: Math.round(altKm),
-      altitude_miles: Math.round(altMiles * 1000),
+      altitude_miles: Math.round(altKm * 0.621371),
       speed_m_s: speedMs,
       speed_mph: vx_fts !== null ? Math.round(Math.sqrt(vx_fts**2 + vy_fts**2 + vz_fts**2) * 0.681818) : 0,
       range_from_earth_km: Math.round(rangeKm),
