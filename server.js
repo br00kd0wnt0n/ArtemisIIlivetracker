@@ -231,6 +231,50 @@ async function fetchAROW() {
   }
 }
 
+async function handleNews() {
+  const cached = getCached('news', 600000); // 10 min cache
+  if (cached) { console.log('[CACHE] news'); return { status: 200, data: cached }; }
+
+  console.log('[PROXY] /api/news -> NASA Artemis Blog + Breaking News');
+  try {
+    // Try Artemis blog first, then breaking news
+    const feeds = [
+      'https://blogs.nasa.gov/artemis/feed/',
+      'https://www.nasa.gov/news-release/feed/',
+    ];
+    let items = [];
+    for (const feedUrl of feeds) {
+      try {
+        const r = await proxyFetch(feedUrl, 10000);
+        if (r.status !== 200) continue;
+        // Simple RSS XML parsing — extract <item> titles, links, dates
+        const xml = r.data;
+        const itemRegex = /<item>[\s\S]*?<\/item>/g;
+        let match;
+        while ((match = itemRegex.exec(xml)) !== null && items.length < 10) {
+          const itemXml = match[0];
+          const title = (itemXml.match(/<title><!\[CDATA\[(.*?)\]\]>|<title>(.*?)<\/title>/) || [])[1] || (itemXml.match(/<title>(.*?)<\/title>/) || [])[1] || '';
+          const link = (itemXml.match(/<link>(.*?)<\/link>/) || [])[1] || '';
+          const pubDate = (itemXml.match(/<pubDate>(.*?)<\/pubDate>/) || [])[1] || '';
+          const desc = (itemXml.match(/<description><!\[CDATA\[(.*?)\]\]>|<description>(.*?)<\/description>/) || [])[1] || '';
+          if (title) items.push({
+            title: title.replace(/<[^>]*>/g, '').trim(),
+            link,
+            date: pubDate,
+            description: desc.replace(/<[^>]*>/g, '').trim().substring(0, 150),
+            source: feedUrl.includes('artemis') ? 'Artemis Blog' : 'NASA News'
+          });
+        }
+      } catch (e) { continue; }
+    }
+    const out = JSON.stringify({ count: items.length, items });
+    if (items.length > 0) setCache('news', out);
+    return { status: 200, data: out };
+  } catch (err) {
+    return { status: 502, data: JSON.stringify({ error: err.message, items: [] }) };
+  }
+}
+
 async function handleHorizons() {
   const cached = getCached('horizons', 3600000);
   if (cached) { console.log('[CACHE] horizons'); return { status: 200, data: cached }; }
@@ -492,6 +536,7 @@ const server = http.createServer(async (req, res) => {
       else if (pathname === '/api/donki/flr') result = await handleDonki('flr');
       else if (pathname === '/api/horizons') result = await handleHorizons();
       else if (pathname === '/api/orion') result = await handleOrionTelemetry();
+      else if (pathname === '/api/news') result = await handleNews();
       else if (pathname === '/api/history' && HAS_DB) {
         const points = await db.getTelemetryHistory(500);
         result = { status: 200, data: JSON.stringify({ count: points.length, points }) };

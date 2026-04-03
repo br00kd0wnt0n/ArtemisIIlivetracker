@@ -1163,13 +1163,15 @@
     <div class="timeline" id="timeline"></div>
   </div>
 
-  <!-- CREW -->
+  <!-- MISSION NEWS -->
   <div class="panel crew-panel">
     <div class="panel-header">
-      <span>CREW MANIFEST</span>
-      <span class="panel-id">DSP-CRW-003</span>
+      <span>MISSION UPDATES <span class="live-badge"><span class="blink"></span>LIVE</span></span>
+      <span class="panel-id">NASA ARTEMIS BLOG</span>
     </div>
-    <div class="crew-grid" id="crewGrid"></div>
+    <div class="feed-content" id="newsFeed">
+      <div class="loading-text">FETCHING NEWS...</div>
+    </div>
   </div>
 
   <!-- LIVE DATA FEEDS ROW -->
@@ -1185,15 +1187,13 @@
       </div>
     </div>
 
-    <!-- APOD -->
+    <!-- CREW MANIFEST -->
     <div class="panel data-feed-panel">
       <div class="panel-header">
-        <span>ASTRONOMY PHOTO <span class="live-badge"><span class="blink"></span>LIVE</span></span>
-        <span class="panel-id">NASA APOD API</span>
+        <span>CREW MANIFEST</span>
+        <span class="panel-id">DSP-CRW-003</span>
       </div>
-      <div class="apod-container" id="apodContainer">
-        <div class="loading-text">FETCHING APOD...</div>
-      </div>
+      <div class="crew-grid" id="crewGrid"></div>
     </div>
 
     <!-- NEAR EARTH OBJECTS -->
@@ -1528,29 +1528,29 @@ function getCached(key) {
   return null;
 }
 
-async function fetchAPOD() {
+async function fetchNews() {
   try {
-    const res = await fetch(`${API_BASE}/api/apod`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}${res.status === 429 ? ' (rate limited)' : ''}`);
+    const res = await fetch(`${API_BASE}/api/news`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    apiCache.apod = { data, ts: Date.now() };
-    const container = document.getElementById('apodContainer');
-    if (data.media_type === 'image') {
-      container.innerHTML = `
-        <img src="${esc(data.url)}" alt="${esc(data.title)}">
-        <div class="apod-title">${esc(data.title)}</div>
-        <div class="apod-desc">${esc(data.explanation.substring(0, 200))}...</div>
-      `;
+    const container = document.getElementById('newsFeed');
+    if (data.items && data.items.length > 0) {
+      container.innerHTML = data.items.slice(0, 6).map(item => {
+        const date = item.date ? new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+        return `
+          <div class="feed-item">
+            <div class="feed-time">${esc(date)} <span class="feed-type" style="color:var(--terminal-green);border-color:var(--terminal-green)">${esc(item.source)}</span></div>
+            <div class="feed-text"><a href="${esc(item.link)}" target="_blank" style="color:var(--text-primary);text-decoration:none">${esc(item.title)}</a></div>
+          </div>
+        `;
+      }).join('');
     } else {
-      container.innerHTML = `
-        <div class="apod-title">${esc(data.title)}</div>
-        <div class="apod-desc">${esc(data.explanation.substring(0, 300))}...</div>
-      `;
+      container.innerHTML = '<div class="loading-text">No recent updates</div>';
     }
     return true;
   } catch (err) {
-    document.getElementById('apodContainer').innerHTML =
-      `<div class="loading-text" style="color:var(--terminal-amber)">APOD FEED: ${err.message}<br>RETRYING...</div>`;
+    document.getElementById('newsFeed').innerHTML =
+      `<div class="loading-text" style="color:var(--terminal-amber)">NEWS: ${err.message}</div>`;
     return false;
   }
 }
@@ -1691,7 +1691,7 @@ async function initLiveFeeds() {
   await fetchOrionTelemetry();
 
   const results = await Promise.allSettled([
-    fetchAPOD(),
+    fetchNews(),
     fetchNeoWs(),
     fetchDONKI(),
     fetchMoonEphemeris()
