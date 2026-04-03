@@ -208,9 +208,11 @@
     flex-shrink: 0;
   }
 
-  .nasa-logo svg {
+  .nasa-logo img {
     width: 100%;
     height: 100%;
+    object-fit: contain;
+    image-rendering: pixelated;
     filter: drop-shadow(0 0 6px rgba(255,255,255,0.2));
   }
 
@@ -1061,13 +1063,7 @@
 <header class="mission-header">
   <div class="header-left">
     <div class="nasa-logo">
-      <svg viewBox="0 0 110 110" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="NASA">
-        <circle cx="55" cy="55" r="52" fill="#0B3D91"/>
-        <circle cx="55" cy="55" r="52" fill="none" stroke="#FC3D21" stroke-width="2.5"/>
-        <ellipse cx="55" cy="55" rx="42" ry="15" fill="none" stroke="#FC3D21" stroke-width="2" transform="rotate(-20 55 55)"/>
-        <path d="M32 76 L43 32 L53 56 L61 32 L70 76" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
-        <circle cx="78" cy="34" r="4" fill="#FC3D21"/>
-      </svg>
+      <img src="/nasa-logo.png" alt="NASA">
     </div>
     <div class="mission-title">
       <h1>ARTEMIS II</h1>
