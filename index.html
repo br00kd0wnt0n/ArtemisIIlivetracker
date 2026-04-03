@@ -2214,7 +2214,7 @@ function drawMap(timestamp) {
     earthGrad.addColorStop(0.4, '#1a6ab8');
     earthGrad.addColorStop(1, '#0a3a6a');
     ctx.fillStyle = earthGrad;
-    ctx.fillRect(earthX - earthR, earthY - earthR, d, d);
+    ctx.fillRect(earthX - earthR, earthY - earthR, earthR * 2, earthR * 2);
   }
 
   // Atmosphere edge highlight
