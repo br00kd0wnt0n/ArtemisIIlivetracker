@@ -2008,29 +2008,22 @@ async function fetchOrionTelemetry() {
       return;
     }
 
-    // Determine mission phase from telemetry + physics
-    // Escape velocity = sqrt(2 * GM / r), GM = 398600 km³/s²
-    // Mission profile: Launch → Earth Orbit (~25h) → TLI burn → Outbound → Lunar Flyby → Return
+    // Determine mission phase from telemetry
+    // Use RANGE as primary indicator — velocity from AROW can be 0/stale
     const alt = data.altitude_km;
     const range = data.range_from_earth_km;
-    const speed = data.speed_m_s / 1000; // km/s
-    const escapeVel = Math.sqrt(2 * 398600 / range);
-    const isEscaping = speed > escapeVel * 0.92; // on hyperbolic/translunar trajectory
+    const speed = data.speed_m_s / 1000; // km/s (may be 0 if AROW velocity stale)
     const moonDist = data.range_from_moon_km;
     const isReturning = data.range_rate_km_s < 0;
 
     let phase;
     if (alt < 185) {
       phase = 'LAUNCH / ASCENT';
-    } else if (!isEscaping && range < 80000) {
-      // Bound orbit — could be parking orbit, perigee raise, or pre-TLI checkout
-      // TLI happens at ~MET 25h14m. Before that, we're in Earth orbit.
+    } else if (range < 15000 && speed > 0 && speed < 8.5) {
       phase = 'EARTH ORBIT';
-    } else if (isEscaping && range < 80000) {
-      // Just escaped — TLI burn in progress or just completed
+    } else if (range < 15000 && speed >= 8.5) {
       phase = 'TRANS-LUNAR INJECTION';
-    } else if (isEscaping && !isReturning && moonDist > 50000) {
-      // Heading outbound toward Moon
+    } else if (range >= 15000 && !isReturning && moonDist > 50000) {
       if (range < 250000) phase = 'OUTBOUND COAST';
       else phase = 'LUNAR APPROACH';
     } else if (moonDist <= 50000) {
@@ -2042,7 +2035,8 @@ async function fetchOrionTelemetry() {
     } else if (isReturning) {
       phase = 'RETURN COAST';
     } else {
-      phase = 'OUTBOUND COAST'; // fallback
+      // Fallback: range > 15,000 km means we're past Earth orbit
+      phase = range > 15000 ? 'OUTBOUND COAST' : 'EARTH ORBIT';
     }
 
     document.getElementById('tPhase').textContent = phase;
@@ -2415,15 +2409,28 @@ function drawMap(timestamp) {
   }
   if (!orionPos) orionPos = trajectoryPoints[0];
 
-  // Traveled path — green line from Earth to Orion's current curve position
-  if (!isInEarthOrbit && orionCurveIdx > 0) {
-    ctx.beginPath(); ctx.strokeStyle = 'rgba(51,255,51,0.6)'; ctx.lineWidth = 2;
-    ctx.shadowColor = 'rgba(51,255,51,0.4)'; ctx.shadowBlur = 6;
-    for (let i = 0; i <= orionCurveIdx; i++) {
-      const pt = trajectoryPoints[i];
-      i === 0 ? ctx.moveTo(pt.x, pt.y) : ctx.lineTo(pt.x, pt.y);
+  // Completed parking orbit — solid green ellipse (always shown post-TLI)
+  if (!isInEarthOrbit) {
+    ctx.save();
+    ctx.translate(ellipseCenterX, earthY);
+    ctx.rotate(ellipseTilt);
+    ctx.beginPath();
+    ctx.ellipse(0, 0, ellipseRx, ellipseRy, 0, 0, Math.PI * 2);
+    ctx.restore();
+    ctx.strokeStyle = 'rgba(51,255,51,0.35)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Green traveled trajectory from orbit departure to Orion's current position
+    if (orionCurveIdx > 0) {
+      ctx.beginPath(); ctx.strokeStyle = 'rgba(51,255,51,0.6)'; ctx.lineWidth = 2;
+      ctx.shadowColor = 'rgba(51,255,51,0.4)'; ctx.shadowBlur = 6;
+      for (let i = 0; i <= orionCurveIdx; i++) {
+        const pt = trajectoryPoints[i];
+        i === 0 ? ctx.moveTo(pt.x, pt.y) : ctx.lineTo(pt.x, pt.y);
+      }
+      ctx.stroke(); ctx.shadowBlur = 0;
     }
-    ctx.stroke(); ctx.shadowBlur = 0;
   }
 
   // Draw Orion
