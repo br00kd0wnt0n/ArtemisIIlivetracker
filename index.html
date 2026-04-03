@@ -2325,35 +2325,40 @@ function drawMap(timestamp) {
     orbitLoopPoints.push({ x: ellipseCenterX + rx, y: earthY + ry });
   }
 
-  // Trajectory path (free-return with TLI departure from orbit)
+  // Trajectory path — free-return figure-8 slingshot around far side of Moon
+  // Artemis II: outbound above, swings behind Moon (far side), returns below
   const trajectoryPoints = [];
   const steps = 300;
   const tliDepartX = orbitLoopPoints[orbitLoopPoints.length - 1].x;
   const tliDepartY = orbitLoopPoints[orbitLoopPoints.length - 1].y;
+  // Flyby radius — closest approach ~10,300 km = visually ~40px past Moon edge
+  const flybyR = moonR + 40;
 
   for (let i = 0; i <= steps; i++) {
     const t = i / steps;
     let x, y;
-    if (t < 0.45) {
-      // Outbound: from TLI departure point to Moon
-      const p = t / 0.45;
-      const cx1 = tliDepartX + 60, cy1 = tliDepartY - 130;
-      const cx2 = moonX - 100, cy2 = moonY + 80;
-      x = Math.pow(1-p,3)*tliDepartX + 3*Math.pow(1-p,2)*p*cx1 + 3*(1-p)*p*p*cx2 + p*p*p*(moonX+10);
-      y = Math.pow(1-p,3)*tliDepartY + 3*Math.pow(1-p,2)*p*cy1 + 3*(1-p)*p*p*cy2 + p*p*p*(moonY+30);
-    } else if (t < 0.55) {
-      // Lunar flyby arc
-      const p = (t - 0.45) / 0.1;
-      const angle = Math.PI * 0.3 + p * Math.PI * 1.2;
-      x = moonX + Math.cos(angle) * (moonR + 15);
-      y = moonY + Math.sin(angle) * (moonR + 15);
+    if (t < 0.42) {
+      // Outbound leg: Earth to Moon approach (curves upward)
+      const p = t / 0.42;
+      const cx1 = tliDepartX + 80, cy1 = tliDepartY - 150;
+      const cx2 = moonX - 80, cy2 = moonY - 60;
+      x = Math.pow(1-p,3)*tliDepartX + 3*Math.pow(1-p,2)*p*cx1 + 3*(1-p)*p*p*cx2 + p*p*p*(moonX - 10);
+      y = Math.pow(1-p,3)*tliDepartY + 3*Math.pow(1-p,2)*p*cy1 + 3*(1-p)*p*p*cy2 + p*p*p*(moonY - flybyR * 0.3);
+    } else if (t < 0.58) {
+      // Lunar flyby — wide arc around the FAR SIDE (right/behind) of Moon
+      // Sweeps from top-left, around the right side, to bottom-left
+      const p = (t - 0.42) / 0.16;
+      const angle = -Math.PI * 0.6 + p * Math.PI * 1.6; // ~290° sweep behind Moon
+      x = moonX + Math.cos(angle) * flybyR;
+      y = moonY + Math.sin(angle) * flybyR;
     } else {
-      // Return to Earth
-      const p = (t - 0.55) / 0.45;
-      const cx1 = moonX - 60, cy1 = moonY - 100;
-      const cx2 = earthX + 120, cy2 = earthY + 130;
-      x = Math.pow(1-p,3)*(moonX-20) + 3*Math.pow(1-p,2)*p*cx1 + 3*(1-p)*p*p*cx2 + p*p*p*(earthX+30);
-      y = Math.pow(1-p,3)*(moonY-10) + 3*Math.pow(1-p,2)*p*cy1 + 3*(1-p)*p*p*cy2 + p*p*p*(earthY+40);
+      // Return leg: Moon back to Earth (curves downward)
+      const p = (t - 0.58) / 0.42;
+      const cx1 = moonX - 60, cy1 = moonY + 80;
+      const cx2 = earthX + 140, cy2 = earthY + 140;
+      const endX = earthX + 30, endY = earthY + 35;
+      x = Math.pow(1-p,3)*(moonX - 10) + 3*Math.pow(1-p,2)*p*cx1 + 3*(1-p)*p*p*cx2 + p*p*p*endX;
+      y = Math.pow(1-p,3)*(moonY + flybyR * 0.3) + 3*Math.pow(1-p,2)*p*cy1 + 3*(1-p)*p*p*cy2 + p*p*p*endY;
     }
     trajectoryPoints.push({ x, y });
   }
