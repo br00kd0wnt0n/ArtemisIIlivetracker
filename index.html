@@ -2437,10 +2437,6 @@ function drawMap(timestamp) {
     }
     ctx.stroke(); ctx.shadowBlur = 0;
   }
-  } else {
-    orionPos = trajectoryPoints[Math.min(traveledIdx, steps)];
-  }
-  if (!orionPos) orionPos = { x: earthX + earthR + 15, y: earthY - 10 };
 
   // Draw Orion
   ctx.beginPath(); ctx.arc(orionPos.x, orionPos.y, 12, 0, Math.PI * 2);
