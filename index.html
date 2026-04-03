@@ -208,10 +208,9 @@
     flex-shrink: 0;
   }
 
-  .nasa-logo img {
+  .nasa-logo svg {
     width: 100%;
     height: 100%;
-    object-fit: contain;
     filter: drop-shadow(0 0 6px rgba(255,255,255,0.2));
   }
 
@@ -1062,7 +1061,13 @@
 <header class="mission-header">
   <div class="header-left">
     <div class="nasa-logo">
-      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/NASA_logo.svg/1224px-NASA_logo.svg.png" alt="NASA" onerror="this.src='https://www.nasa.gov/wp-content/themes/flavor/images/nasa-logo.svg'">
+      <svg viewBox="0 0 110 110" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="NASA">
+        <circle cx="55" cy="55" r="52" fill="#0B3D91"/>
+        <circle cx="55" cy="55" r="52" fill="none" stroke="#FC3D21" stroke-width="2.5"/>
+        <ellipse cx="55" cy="55" rx="42" ry="15" fill="none" stroke="#FC3D21" stroke-width="2" transform="rotate(-20 55 55)"/>
+        <path d="M32 76 L43 32 L53 56 L61 32 L70 76" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="78" cy="34" r="4" fill="#FC3D21"/>
+      </svg>
     </div>
     <div class="mission-title">
       <h1>ARTEMIS II</h1>
@@ -1164,7 +1169,7 @@
   </div>
 
   <!-- MISSION NEWS -->
-  <div class="panel crew-panel">
+  <div class="panel data-feed-panel" style="overflow-y:auto;max-height:520px">
     <div class="panel-header">
       <span>MISSION UPDATES <span class="live-badge"><span class="blink"></span>LIVE</span></span>
       <span class="panel-id">NASA ARTEMIS BLOG</span>
@@ -1535,17 +1540,22 @@ async function fetchNews() {
     const data = await res.json();
     const container = document.getElementById('newsFeed');
     if (data.items && data.items.length > 0) {
-      container.innerHTML = data.items.slice(0, 6).map(item => {
+      container.innerHTML = data.items.slice(0, 8).map((item, idx) => {
         const date = item.date ? new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+        const descId = `news-desc-${idx}`;
         return `
-          <div class="feed-item">
+          <div class="feed-item" style="cursor:pointer" onclick="var d=document.getElementById('${descId}');d.style.display=d.style.display==='none'?'block':'none'">
             <div class="feed-time">${esc(date)} <span class="feed-type" style="color:var(--terminal-green);border-color:var(--terminal-green)">${esc(item.source)}</span></div>
-            <div class="feed-text"><a href="${esc(item.link)}" target="_blank" style="color:var(--text-primary);text-decoration:none">${esc(item.title)}</a></div>
+            <div class="feed-text">${esc(item.title)}</div>
+            <div id="${descId}" style="display:none;margin-top:6px;font-size:10px;line-height:1.5;color:var(--text-dim)">
+              ${esc(item.description)}${item.description.length >= 390 ? '...' : ''}
+              <div style="margin-top:6px"><a href="${esc(item.link)}" target="_blank" style="color:var(--nasa-gold);font-size:9px;letter-spacing:1px">VIEW FULL ARTICLE &#8599;</a></div>
+            </div>
           </div>
         `;
       }).join('');
     } else {
-      container.innerHTML = '<div class="loading-text">No recent updates</div>';
+      container.innerHTML = '<div class="loading-text">No recent Artemis updates</div>';
     }
     return true;
   } catch (err) {
@@ -2374,72 +2384,63 @@ function drawMap(timestamp) {
   trajectoryPoints.forEach((p,i) => i === 0 ? ctx.moveTo(p.x,p.y) : ctx.lineTo(p.x,p.y));
   ctx.stroke(); ctx.setLineDash([]);
 
-  // Traveled path — only show when actually on the translunar trajectory (not during orbit phase)
-  const traveledIdx = Math.floor(animationProgress * steps);
-  if (!isInEarthOrbit && traveledIdx > 0) {
-    ctx.beginPath(); ctx.strokeStyle = 'rgba(51,255,51,0.6)'; ctx.lineWidth = 2;
-    ctx.shadowColor = 'rgba(51,255,51,0.4)'; ctx.shadowBlur = 6;
-    for (let i = 0; i <= traveledIdx; i++) {
-      i === 0 ? ctx.moveTo(trajectoryPoints[i].x, trajectoryPoints[i].y) : ctx.lineTo(trajectoryPoints[i].x, trajectoryPoints[i].y);
-    }
-    ctx.stroke(); ctx.shadowBlur = 0;
-  }
-
-  // Orion marker — place ON the trajectory curve at real range-based position
+  // Compute Orion's position on the trajectory curve from real range data
   let orionPos;
+  let orionCurveIdx = 0; // used by both traveled line and marker
+
   if (liveOrionData && liveOrionData.range_from_earth_km) {
     const range = liveOrionData.range_from_earth_km;
-    const altitude = liveOrionData.altitude_km;
     const fraction = range / 384400; // 0 to 1 (Earth to Moon)
 
     if (isInEarthOrbit) {
       // EARTH ORBIT: animate on elliptical orbit
-      const orbitAngle = (timestamp / 30000) * Math.PI * 2; // match trail animation speed
+      const orbitAngle = (timestamp / 30000) * Math.PI * 2;
       const ex = ellipseRx * Math.cos(orbitAngle);
       const ey = ellipseRy * Math.sin(orbitAngle);
       const rx = ex * Math.cos(ellipseTilt) - ey * Math.sin(ellipseTilt);
       const ry = ex * Math.sin(ellipseTilt) + ey * Math.cos(ellipseTilt);
       orionPos = { x: ellipseCenterX + rx, y: earthY + ry };
+      orionCurveIdx = 0;
     } else {
-      // Place directly on the trajectory curve at the correct proportional point
-      // The outbound leg is steps 0-134 (t=0 to t=0.45), covering 0 to 384,400 km
-      // Map range fraction to curve index on the outbound leg
-      const outboundSteps = Math.floor(steps * 0.45); // ~135 steps for outbound
-      const curveIdx = Math.min(Math.floor(fraction * outboundSteps), outboundSteps);
+      // Place on the trajectory curve using real range fraction
+      const outboundSteps = Math.floor(steps * 0.45); // steps 0-134
+      const flybyStart = Math.floor(steps * 0.45);     // steps 135-164
+      const flybyEnd = Math.floor(steps * 0.55);
+      const returnStart = Math.floor(steps * 0.55);    // steps 165-300
 
-      // If returning (range_rate negative), use return leg
       const isReturning = liveOrionData.range_rate_km_s < 0;
-      let pointIdx;
-      if (isReturning) {
-        // Return leg: steps 165-300, fraction 1->0
-        const returnStart = Math.floor(steps * 0.55);
-        const returnSteps = steps - returnStart;
-        pointIdx = returnStart + Math.floor((1 - fraction) * returnSteps);
+
+      if (!isReturning) {
+        // Outbound: fraction 0→1 maps to steps 0→outboundSteps
+        orionCurveIdx = Math.round(fraction * outboundSteps);
+      } else if (liveOrionData.range_from_moon_km < 50000) {
+        // Lunar flyby zone
+        orionCurveIdx = flybyStart + Math.round((flybyEnd - flybyStart) / 2);
       } else {
-        pointIdx = curveIdx;
+        // Return leg: fraction 1→0 maps to returnStart→steps
+        const returnSteps = steps - returnStart;
+        orionCurveIdx = returnStart + Math.round((1 - fraction) * returnSteps);
       }
 
-      pointIdx = Math.max(0, Math.min(pointIdx, steps));
-      orionPos = trajectoryPoints[pointIdx];
-
-      // Ensure minimum visible distance from Earth on map
-      if (orionPos) {
-        const distFromEarth = Math.sqrt((orionPos.x - earthX)**2 + (orionPos.y - earthY)**2);
-        if (distFromEarth < earthR + 15) {
-          // Too close to Earth center — nudge outward along the curve direction
-          const nextPt = trajectoryPoints[Math.min(pointIdx + 5, steps)];
-          if (nextPt) {
-            const dx = nextPt.x - earthX;
-            const dy = nextPt.y - earthY;
-            const len = Math.sqrt(dx*dx + dy*dy);
-            orionPos = {
-              x: earthX + dx / len * (earthR + 18),
-              y: earthY + dy / len * (earthR + 18)
-            };
-          }
-        }
-      }
+      orionCurveIdx = Math.max(0, Math.min(orionCurveIdx, steps));
+      orionPos = trajectoryPoints[orionCurveIdx];
     }
+  } else {
+    orionPos = trajectoryPoints[0];
+    orionCurveIdx = 0;
+  }
+  if (!orionPos) orionPos = trajectoryPoints[0];
+
+  // Traveled path — green line from Earth to Orion's current curve position
+  if (!isInEarthOrbit && orionCurveIdx > 0) {
+    ctx.beginPath(); ctx.strokeStyle = 'rgba(51,255,51,0.6)'; ctx.lineWidth = 2;
+    ctx.shadowColor = 'rgba(51,255,51,0.4)'; ctx.shadowBlur = 6;
+    for (let i = 0; i <= orionCurveIdx; i++) {
+      const pt = trajectoryPoints[i];
+      i === 0 ? ctx.moveTo(pt.x, pt.y) : ctx.lineTo(pt.x, pt.y);
+    }
+    ctx.stroke(); ctx.shadowBlur = 0;
+  }
   } else {
     orionPos = trajectoryPoints[Math.min(traveledIdx, steps)];
   }

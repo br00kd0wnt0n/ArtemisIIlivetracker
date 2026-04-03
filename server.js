@@ -240,7 +240,6 @@ async function handleNews() {
     // Try Artemis blog first, then breaking news
     const feeds = [
       'https://blogs.nasa.gov/artemis/feed/',
-      'https://www.nasa.gov/news-release/feed/',
     ];
     let items = [];
     for (const feedUrl of feeds) {
@@ -261,8 +260,8 @@ async function handleNews() {
             title: title.replace(/<[^>]*>/g, '').trim(),
             link,
             date: pubDate,
-            description: desc.replace(/<[^>]*>/g, '').trim().substring(0, 150),
-            source: feedUrl.includes('artemis') ? 'Artemis Blog' : 'NASA News'
+            description: desc.replace(/<[^>]*>/g, '').trim().substring(0, 400),
+            source: 'Artemis Blog'
           });
         }
       } catch (e) { continue; }
