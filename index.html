@@ -2182,56 +2182,39 @@ function drawMap(timestamp) {
   ctx.fillStyle = earthGlow;
   ctx.fillRect(earthX - earthR * 3, earthY - earthR * 3, earthR * 6, earthR * 6);
 
-  // Earth with NASA Blue Marble texture (equirectangular → sphere projection)
+  // Earth with NASA Blue Marble texture
   ctx.save();
   ctx.beginPath();
   ctx.arc(earthX, earthY, earthR, 0, Math.PI * 2);
   ctx.clip();
 
   if (earthTexture && earthTexture.complete && earthTexture.naturalWidth > 0) {
-    // Map equirectangular texture onto visible hemisphere
-    // Rotation: one full revolution every 90 seconds
-    const rot = (timestamp / 90000) * Math.PI * 2;
+    // Simple scrolling texture — draw twice for seamless wrap
     const texW = earthTexture.naturalWidth;
     const texH = earthTexture.naturalHeight;
     const d = earthR * 2;
+    // Scroll offset: one revolution per 120 seconds
+    const scrollPx = ((timestamp / 120000) % 1) * d;
 
-    // Sample vertical strips of the texture and draw them with spherical distortion
-    const strips = 40; // number of longitude strips
-    for (let i = 0; i < strips; i++) {
-      const lon = (i / strips) * Math.PI * 2 + rot; // longitude angle
-      const normLon = ((lon % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
-      const cosLon = Math.cos(lon);
+    // Draw texture scrolling across the circle (drawn twice for wrap)
+    ctx.drawImage(earthTexture, earthX - earthR - scrollPx, earthY - earthR, d, d);
+    ctx.drawImage(earthTexture, earthX - earthR - scrollPx + d, earthY - earthR, d, d);
 
-      if (cosLon < -0.05) continue; // behind the sphere
-
-      // X position on sphere surface
-      const sphereX = Math.sin(lon) * earthR;
-      // Width of this strip (compressed at edges)
-      const stripW = (earthR * 2 * Math.PI / strips) * cosLon;
-
-      if (stripW < 0.5) continue;
-
-      // Source x in texture
-      const srcX = (normLon / (Math.PI * 2)) * texW;
-      const srcW = texW / strips;
-
-      ctx.globalAlpha = 0.3 + cosLon * 0.7; // fade at limb
-      ctx.drawImage(
-        earthTexture,
-        srcX, 0, srcW, texH,  // source rect
-        earthX + sphereX - stripW / 2, earthY - earthR, stripW, d  // dest rect
-      );
-    }
-    ctx.globalAlpha = 1;
+    // Spherical shading overlay — darker at edges for 3D look
+    const sphereShade = ctx.createRadialGradient(earthX - 6, earthY - 6, earthR * 0.1, earthX, earthY, earthR);
+    sphereShade.addColorStop(0, 'rgba(100,160,255,0.1)');
+    sphereShade.addColorStop(0.6, 'rgba(0,0,0,0)');
+    sphereShade.addColorStop(1, 'rgba(0,0,30,0.6)');
+    ctx.fillStyle = sphereShade;
+    ctx.fillRect(earthX - earthR, earthY - earthR, d, d);
   } else {
-    // Fallback: solid blue if texture hasn't loaded
+    // Fallback: solid blue
     const earthGrad = ctx.createRadialGradient(earthX - 8, earthY - 8, 3, earthX, earthY, earthR);
     earthGrad.addColorStop(0, '#3a8adf');
     earthGrad.addColorStop(0.4, '#1a6ab8');
     earthGrad.addColorStop(1, '#0a3a6a');
     ctx.fillStyle = earthGrad;
-    ctx.fillRect(earthX - earthR, earthY - earthR, earthR * 2, earthR * 2);
+    ctx.fillRect(earthX - earthR, earthY - earthR, d, d);
   }
 
   // Atmosphere edge highlight
