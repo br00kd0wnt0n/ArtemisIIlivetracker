@@ -2403,17 +2403,22 @@ function drawMap(timestamp) {
   }
   if (!orionPos) orionPos = trajectoryPoints[0];
 
-  // Completed parking orbit — solid green ellipse (always shown post-TLI)
+  // Completed Earth orbits — staggered ellipses showing the ~1.5 orbits before TLI
   if (!isInEarthOrbit) {
-    ctx.save();
-    ctx.translate(ellipseCenterX, earthY);
-    ctx.rotate(ellipseTilt);
-    ctx.beginPath();
-    ctx.ellipse(0, 0, ellipseRx, ellipseRy, 0, 0, Math.PI * 2);
-    ctx.restore();
-    ctx.strokeStyle = 'rgba(51,255,51,0.35)';
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
+    const orbitCount = 3; // parking orbit + perigee raise + pre-TLI orbit
+    for (let o = 0; o < orbitCount; o++) {
+      const offset = o * 3; // stagger each orbit slightly outward
+      const fade = 0.15 + (o / orbitCount) * 0.25; // inner orbits dimmer
+      ctx.save();
+      ctx.translate(ellipseCenterX, earthY);
+      ctx.rotate(ellipseTilt + o * 0.05); // slight tilt variation
+      ctx.beginPath();
+      ctx.ellipse(0, 0, ellipseRx + offset, ellipseRy + offset * 0.6, 0, 0, Math.PI * 2);
+      ctx.restore();
+      ctx.strokeStyle = `rgba(51,255,51,${fade})`;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
 
     // Green traveled trajectory from orbit departure to Orion's current position
     if (orionCurveIdx > 0) {
