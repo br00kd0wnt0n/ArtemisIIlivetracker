@@ -1970,23 +1970,11 @@ async function fetchOrionTelemetry() {
       renderTimeline();
     }
 
-    // Update telemetry display
-    // If data is predicted (future), show with warning — don't override map position
-    const isPredicted = data.data_age_minutes > 5; // data is from the future or very stale
-    const label = isPredicted ? ' <span style="font-size:8px;color:var(--terminal-amber)">[PREDICTED]</span>' : '';
-    document.getElementById('tAlt').innerHTML = `${data.altitude_km.toLocaleString()} km${label}`;
-    document.getElementById('tVel').innerHTML = `${data.speed_m_s.toLocaleString()} m/s${label}`;
-    document.getElementById('tRange').innerHTML = `${data.range_from_earth_km.toLocaleString()} km${label}`;
+    // Update telemetry display with Horizons data
+    document.getElementById('tAlt').innerHTML = `${data.altitude_km.toLocaleString()} km`;
+    document.getElementById('tVel').innerHTML = `${data.speed_m_s.toLocaleString()} m/s`;
+    document.getElementById('tRange').innerHTML = `${data.range_from_earth_km.toLocaleString()} km`;
     document.getElementById('tMoonAngle').textContent = data.range_from_moon_km.toLocaleString() + ' km';
-
-    // If predicted, don't use this data for map plotting — clear liveOrionData so map doesn't show wrong position
-    if (isPredicted) {
-      liveOrionData = null; // don't plot predicted position on map
-      document.getElementById('phaseLabel').innerHTML =
-        `<span style="color:var(--terminal-amber)">TELEMETRY PREDICTED — HORIZONS DATA FROM ${data.timestamp} TDB</span>`;
-      console.log(`[ORION] Data is ${Math.abs(data.data_age_minutes)} min ${data.data_age_minutes > 0 ? 'ahead' : 'old'} — not plotting on map`);
-      return;
-    }
 
     // Determine mission phase from telemetry
     // Use RANGE as primary indicator — velocity from AROW can be 0/stale
@@ -2312,38 +2300,42 @@ function drawMap(timestamp) {
   const OUTBOUND_END = 0.40;
   const FLYBY_END = 0.60;
 
-  // Distances for the arc heights (relative to Earth-Moon midline)
-  const midX = (earthX + moonX) / 2;
-  const midY = (earthY + moonY) / 2;
+  // Figure-8: outbound curves above, flyby arcs behind Moon, return curves below
   const span = moonX - earthX;
-  const arcHeight = span * 0.28; // how far the arcs bulge above/below
+  const arcHeight = span * 0.25;
+
+  // Flyby arc angles — compute exact start/end XY so Bezier legs connect perfectly
+  const flybyStartAngle = -Math.PI * 0.75;
+  const flybyEndAngle = Math.PI * 0.75;
+  // Exact connection points where Bezier meets arc
+  const flybyEntryX = moonX + Math.cos(flybyStartAngle) * flybyR;
+  const flybyEntryY = moonY + Math.sin(flybyStartAngle) * flybyR;
+  const flybyExitX = moonX + Math.cos(flybyEndAngle) * flybyR;
+  const flybyExitY = moonY + Math.sin(flybyEndAngle) * flybyR;
 
   for (let i = 0; i <= steps; i++) {
     const t = i / steps;
     let x, y;
     if (t < OUTBOUND_END) {
-      // OUTBOUND (upper arc): Earth → Moon, curving above the midline
+      // OUTBOUND: Earth → flyby entry point (upper arc)
       const p = t / OUTBOUND_END;
-      // Bezier: depart Earth upward, arc high, arrive at Moon from above-left
       const p0x = earthX + earthR + 5, p0y = earthY - 10;
       const p1x = earthX + span * 0.25, p1y = earthY - arcHeight;
-      const p2x = earthX + span * 0.65, p2y = moonY - arcHeight * 0.8;
-      const p3x = moonX - flybyR * 0.7, p3y = moonY - flybyR * 0.7;
+      const p2x = earthX + span * 0.6, p2y = flybyEntryY - arcHeight * 0.3;
+      const p3x = flybyEntryX, p3y = flybyEntryY;
       x = Math.pow(1-p,3)*p0x + 3*Math.pow(1-p,2)*p*p1x + 3*(1-p)*p*p*p2x + p*p*p*p3x;
       y = Math.pow(1-p,3)*p0y + 3*Math.pow(1-p,2)*p*p1y + 3*(1-p)*p*p*p2y + p*p*p*p3y;
     } else if (t < FLYBY_END) {
       // FLYBY: arc clockwise around Moon's far side
       const p = (t - OUTBOUND_END) / (FLYBY_END - OUTBOUND_END);
-      const startAngle = -Math.PI * 0.75; // approach from upper-left
-      const endAngle = Math.PI * 0.75;    // depart to lower-left
-      const angle = startAngle + p * (endAngle - startAngle);
+      const angle = flybyStartAngle + p * (flybyEndAngle - flybyStartAngle);
       x = moonX + Math.cos(angle) * flybyR;
       y = moonY + Math.sin(angle) * flybyR;
     } else {
-      // RETURN (lower arc): Moon → Earth, curving below the midline
+      // RETURN: flyby exit point → Earth (lower arc)
       const p = (t - FLYBY_END) / (1.0 - FLYBY_END);
-      const p0x = moonX - flybyR * 0.7, p0y = moonY + flybyR * 0.7;
-      const p1x = earthX + span * 0.65, p1y = moonY + arcHeight * 0.8;
+      const p0x = flybyExitX, p0y = flybyExitY;
+      const p1x = earthX + span * 0.6, p1y = flybyExitY + arcHeight * 0.3;
       const p2x = earthX + span * 0.25, p2y = earthY + arcHeight;
       const p3x = earthX + earthR + 5, p3y = earthY + 10;
       x = Math.pow(1-p,3)*p0x + 3*Math.pow(1-p,2)*p*p1x + 3*(1-p)*p*p*p2x + p*p*p*p3x;
