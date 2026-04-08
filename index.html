@@ -1144,7 +1144,7 @@
       <div class="map-legend">
         <div class="legend-item"><div class="legend-swatch" style="background:var(--terminal-green)"></div>TRAJECTORY</div>
         <div class="legend-item"><div class="legend-swatch" style="background:var(--nasa-gold)"></div>PLANNED PATH</div>
-        <div class="legend-item"><div class="legend-swatch" style="background:#555"></div>LUNAR ORBIT</div>
+        <div class="legend-item"><div class="legend-swatch" style="background:var(--terminal-green)"></div>COMPLETED</div>
         <div class="legend-item"><div class="legend-swatch" style="background:var(--nasa-red)"></div>ORION MPCV</div>
       </div>
     </div>
@@ -1263,10 +1263,10 @@ function esc(text) {
   return d.innerHTML;
 }
 
-// Will be overwritten by live API data
-let LAUNCH_EPOCH = null;
-let launchStatus = 'FETCHING';
-let launchStatusCode = null; // e.g. 1=Go, 2=TBD, 3=Success, 4=Failure, 6=In Flight, 7=Partial Failure
+// Artemis II launched April 1, 2026 at 22:35 UTC
+let LAUNCH_EPOCH = new Date('2026-04-01T22:35:00Z');
+let launchStatus = 'In Flight';
+let launchStatusCode = 6; // In Flight
 const MISSION_DURATION_MS = 10.5 * 24 * 3600 * 1000;
 
 let apiConnected = false;
@@ -1691,10 +1691,7 @@ async function fetchMoonEphemeris() {
 }
 
 async function initLiveFeeds() {
-  // Fetch launch data FIRST — everything else depends on it
-  const launchResult = await fetchLaunchData();
-
-  // Always try Orion telemetry (Horizons may have data even if LL2 is down)
+  // Launch confirmed — fetch Orion telemetry directly from Horizons
   await fetchOrionTelemetry();
 
   const results = await Promise.allSettled([
@@ -1705,7 +1702,7 @@ async function initLiveFeeds() {
   ]);
 
   const feedSuccesses = results.filter(r => r.status === 'fulfilled' && r.value === true).length;
-  const totalFeeds = feedSuccesses + (launchResult ? 1 : 0);
+  const totalFeeds = feedSuccesses + (liveOrionData ? 1 : 0);
   const totalPossible = 5;
   const dot = document.getElementById('apiStatusDot');
   const val = document.getElementById('apiStatusValue');
@@ -1736,10 +1733,7 @@ async function initLiveFeeds() {
 
 async function pollLaunchStatus() {
   try {
-    await fetchLaunchData();
-    if (launchStatusCode === 6 || launchStatusCode === 3) {
-      await fetchOrionTelemetry();
-    }
+    await fetchOrionTelemetry();
     document.getElementById('lastUpdate').textContent =
       `LAST API POLL: ${new Date().toISOString().replace('T', ' ').substring(0, 19)} UTC`;
   } catch (err) {
@@ -1871,21 +1865,7 @@ function updateClock() {
   const metEl = document.getElementById('metClock');
   const labelEl = document.querySelector('.met-label');
 
-  // If we don't have launch data yet, show waiting state
-  if (!LAUNCH_EPOCH) {
-    labelEl.textContent = 'AWAITING LAUNCH DATA FROM API';
-    metEl.textContent = '---:--:--:--';
-    metEl.style.color = 'var(--terminal-amber)';
-    animationProgress = 0;
-
-    // Update UTC time regardless
-    const doy = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 86400000);
-    document.getElementById('utcTime').textContent =
-      `UTC ${now.getUTCFullYear()}-${String(doy).padStart(3,'0')}T${String(now.getUTCHours()).padStart(2,'0')}:${String(now.getUTCMinutes()).padStart(2,'0')}:${String(now.getUTCSeconds()).padStart(2,'0')}Z`;
-    return;
-  }
-
-  // Launch epoch loaded — stop clock loading animation
+  // Stop loading animation on clock
   stopLoadingDigits(metEl);
 
   const elapsedMs = now.getTime() - LAUNCH_EPOCH.getTime();
