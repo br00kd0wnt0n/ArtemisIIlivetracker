@@ -298,30 +298,17 @@ async function handleOrionTelemetry() {
   const now = new Date();
   const fmt = d => d.toISOString().replace('T',' ').substring(0, 19);
 
-  // Try querying around "now" first, then progressively earlier windows
-  // This handles both the case where data is near-real-time and where it's delayed
+  // Query windows — current time first (Horizons now has real-time data)
   const windows = [];
-  // Window 1: latest 20 minutes
-  windows.push([new Date(now.getTime() - 1200000), new Date(now.getTime() + 60000)]);
-  // Window 2: 1-2 hours ago
-  windows.push([new Date(now.getTime() - 7200000), new Date(now.getTime() - 3600000)]);
-  // Window 3: 2-4 hours ago
-  windows.push([new Date(now.getTime() - 14400000), new Date(now.getTime() - 7200000)]);
-  // Window 4: from known earliest possible start
-  windows.push([new Date('2026-04-02T02:00:00Z'), new Date('2026-04-02T03:00:00Z')]);
+  // Window 1: now ±10 minutes (real-time)
+  windows.push([new Date(now.getTime() - 600000), new Date(now.getTime() + 60000)]);
+  // Window 2: last hour
+  windows.push([new Date(now.getTime() - 3600000), new Date(now.getTime())]);
+  // Window 3: 1-4 hours ago (fallback)
+  windows.push([new Date(now.getTime() - 14400000), new Date(now.getTime() - 3600000)]);
 
-  // 1. Try AROW first (real-time, ~2s updates)
-  const arowData = await fetchAROW();
-  if (arowData) {
-    const out = JSON.stringify(arowData);
-    setCache('orion', out);
-    // Store in DB
-    if (HAS_DB) db.storeTelemetry(arowData).catch(e => console.error('[DB]', e.message));
-    return { status: 200, data: out };
-  }
-  console.log('[AROW] unavailable, falling back to Horizons');
-
-  // 2. Fall back to JPL Horizons
+  // Horizons now has real-time data — use it as primary (more reliable than AROW)
+  // AROW parameter meanings shift during mission, Horizons is stable
   console.log('[PROXY] /api/orion -> JPL Horizons (Artemis II spacecraft -1024)');
 
   try {
