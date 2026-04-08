@@ -2028,7 +2028,8 @@ async function fetchOrionTelemetry() {
       else phase = 'LUNAR APPROACH';
     } else if (moonDist <= 50000) {
       phase = 'LUNAR FLYBY';
-    } else if (isReturning && moonDist < 150000) {
+    } else if (isReturning && moonDist < 80000) {
+      // Just past the Moon, still in the slingshot arc
       phase = 'FREE-RETURN ARC';
     } else if (isReturning && range < 50000) {
       phase = 'ENTRY PREP';
@@ -2319,40 +2320,41 @@ function drawMap(timestamp) {
     orbitLoopPoints.push({ x: ellipseCenterX + rx, y: earthY + ry });
   }
 
-  // Trajectory path — free-return figure-8 slingshot around far side of Moon
-  // Artemis II: outbound above, swings behind Moon (far side), returns below
+  // Free-return figure-8: outbound (upper), flyby behind Moon, return (lower)
+  // Segment splits: outbound 0-0.40, flyby 0.40-0.60, return 0.60-1.0
   const trajectoryPoints = [];
   const steps = 300;
   const tliDepartX = orbitLoopPoints[orbitLoopPoints.length - 1].x;
   const tliDepartY = orbitLoopPoints[orbitLoopPoints.length - 1].y;
-  // Flyby radius — closest approach ~10,300 km = visually ~40px past Moon edge
-  const flybyR = moonR + 40;
+  const flybyR = moonR + 35; // closest approach visual radius
+
+  // Key split points (must match orionCurveIdx calculations below)
+  const OUTBOUND_END = 0.40;
+  const FLYBY_END = 0.60;
 
   for (let i = 0; i <= steps; i++) {
     const t = i / steps;
     let x, y;
-    if (t < 0.42) {
-      // Outbound leg: Earth to Moon approach (curves upward)
-      const p = t / 0.42;
-      const cx1 = tliDepartX + 80, cy1 = tliDepartY - 150;
-      const cx2 = moonX - 80, cy2 = moonY - 60;
-      x = Math.pow(1-p,3)*tliDepartX + 3*Math.pow(1-p,2)*p*cx1 + 3*(1-p)*p*p*cx2 + p*p*p*(moonX - 10);
-      y = Math.pow(1-p,3)*tliDepartY + 3*Math.pow(1-p,2)*p*cy1 + 3*(1-p)*p*p*cy2 + p*p*p*(moonY - flybyR * 0.3);
-    } else if (t < 0.58) {
-      // Lunar flyby — wide arc around the FAR SIDE (right/behind) of Moon
-      // Sweeps from top-left, around the right side, to bottom-left
-      const p = (t - 0.42) / 0.16;
-      const angle = -Math.PI * 0.6 + p * Math.PI * 1.6; // ~290° sweep behind Moon
+    if (t < OUTBOUND_END) {
+      // Outbound: Earth → Moon (upper arc, approaching from above-left)
+      const p = t / OUTBOUND_END;
+      x = Math.pow(1-p,3)*tliDepartX + 3*Math.pow(1-p,2)*p*(earthX + 100) + 3*(1-p)*p*p*(moonX * 0.6) + p*p*p*(moonX - 20);
+      y = Math.pow(1-p,3)*tliDepartY + 3*Math.pow(1-p,2)*p*(earthY - h*0.35) + 3*(1-p)*p*p*(moonY - h*0.25) + p*p*p*(moonY - 20);
+    } else if (t < FLYBY_END) {
+      // Flyby: wide arc around Moon's far side (swings to the right)
+      const p = (t - OUTBOUND_END) / (FLYBY_END - OUTBOUND_END);
+      // Start above-left of Moon, sweep clockwise around right/far side, exit below-left
+      const startAngle = -Math.PI * 0.7;  // upper-left approach
+      const endAngle = Math.PI * 0.7;     // lower-left departure
+      const angle = startAngle + p * (endAngle - startAngle);
       x = moonX + Math.cos(angle) * flybyR;
       y = moonY + Math.sin(angle) * flybyR;
     } else {
-      // Return leg: Moon back to Earth (curves downward)
-      const p = (t - 0.58) / 0.42;
-      const cx1 = moonX - 60, cy1 = moonY + 80;
-      const cx2 = earthX + 140, cy2 = earthY + 140;
-      const endX = earthX + 30, endY = earthY + 35;
-      x = Math.pow(1-p,3)*(moonX - 10) + 3*Math.pow(1-p,2)*p*cx1 + 3*(1-p)*p*p*cx2 + p*p*p*endX;
-      y = Math.pow(1-p,3)*(moonY + flybyR * 0.3) + 3*Math.pow(1-p,2)*p*cy1 + 3*(1-p)*p*p*cy2 + p*p*p*endY;
+      // Return: Moon → Earth (lower arc, departing below)
+      const p = (t - FLYBY_END) / (1.0 - FLYBY_END);
+      const startX = moonX - 20, startY = moonY + 20;
+      x = Math.pow(1-p,3)*startX + 3*Math.pow(1-p,2)*p*(moonX * 0.5) + 3*(1-p)*p*p*(earthX + 120) + p*p*p*(earthX + 25);
+      y = Math.pow(1-p,3)*startY + 3*Math.pow(1-p,2)*p*(moonY + h*0.2) + 3*(1-p)*p*p*(earthY + h*0.3) + p*p*p*(earthY + 30);
     }
     trajectoryPoints.push({ x, y });
   }
@@ -2380,11 +2382,11 @@ function drawMap(timestamp) {
       orionPos = { x: ellipseCenterX + rx, y: earthY + ry };
       orionCurveIdx = 0;
     } else {
-      // Place on the trajectory curve using real range fraction
-      const outboundSteps = Math.floor(steps * 0.45); // steps 0-134
-      const flybyStart = Math.floor(steps * 0.45);     // steps 135-164
-      const flybyEnd = Math.floor(steps * 0.55);
-      const returnStart = Math.floor(steps * 0.55);    // steps 165-300
+      // Place on the trajectory curve — must match OUTBOUND_END/FLYBY_END splits
+      const outboundSteps = Math.floor(steps * OUTBOUND_END);  // 0-119
+      const flybyStart = Math.floor(steps * OUTBOUND_END);      // 120
+      const flybyEnd = Math.floor(steps * FLYBY_END);           // 180
+      const returnStart = Math.floor(steps * FLYBY_END);        // 180-300
 
       const isReturning = liveOrionData.range_rate_km_s < 0;
 
