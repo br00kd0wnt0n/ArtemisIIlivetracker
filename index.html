@@ -2300,14 +2300,16 @@ function drawMap(timestamp) {
   const OUTBOUND_END = 0.40;
   const FLYBY_END = 0.60;
 
-  // Figure-8: outbound curves above, flyby arcs behind Moon, return curves below
+  // TRUE FIGURE-8: paths cross at ~40% of the way from Earth to Moon
+  // Outbound: departs Earth downward, crosses UP over midline, arrives Moon from below
+  // Return: departs Moon downward, crosses UNDER midline, arrives Earth from below
   const span = moonX - earthX;
-  const arcHeight = span * 0.25;
+  const arcHeight = span * 0.22;
+  const crossX = earthX + span * 0.38; // where the paths cross
 
-  // Flyby arc angles — compute exact start/end XY so Bezier legs connect perfectly
-  const flybyStartAngle = -Math.PI * 0.75;
-  const flybyEndAngle = Math.PI * 0.75;
-  // Exact connection points where Bezier meets arc
+  // Flyby arc — enters from below Moon, sweeps clockwise behind, exits above Moon
+  const flybyStartAngle = Math.PI * 0.6;   // approach from below-left
+  const flybyEndAngle = -Math.PI * 0.6;    // depart to above-left (clockwise = negative)
   const flybyEntryX = moonX + Math.cos(flybyStartAngle) * flybyR;
   const flybyEntryY = moonY + Math.sin(flybyStartAngle) * flybyR;
   const flybyExitX = moonX + Math.cos(flybyEndAngle) * flybyR;
@@ -2317,27 +2319,28 @@ function drawMap(timestamp) {
     const t = i / steps;
     let x, y;
     if (t < OUTBOUND_END) {
-      // OUTBOUND: Earth → flyby entry point (upper arc)
+      // OUTBOUND: Earth (slightly below) → cross UP at midpoint → Moon from below
       const p = t / OUTBOUND_END;
-      const p0x = earthX + earthR + 5, p0y = earthY - 10;
-      const p1x = earthX + span * 0.25, p1y = earthY - arcHeight;
-      const p2x = earthX + span * 0.6, p2y = flybyEntryY - arcHeight * 0.3;
-      const p3x = flybyEntryX, p3y = flybyEntryY;
+      const p0x = earthX + earthR + 5, p0y = earthY + 15;         // depart Earth slightly below center
+      const p1x = crossX - span * 0.08, p1y = earthY + arcHeight; // dip down before crossing
+      const p2x = crossX + span * 0.15, p2y = moonY - arcHeight;  // swing up after crossing
+      const p3x = flybyEntryX, p3y = flybyEntryY;                 // arrive at Moon from below
       x = Math.pow(1-p,3)*p0x + 3*Math.pow(1-p,2)*p*p1x + 3*(1-p)*p*p*p2x + p*p*p*p3x;
       y = Math.pow(1-p,3)*p0y + 3*Math.pow(1-p,2)*p*p1y + 3*(1-p)*p*p*p2y + p*p*p*p3y;
     } else if (t < FLYBY_END) {
-      // FLYBY: arc clockwise around Moon's far side
+      // FLYBY: arc clockwise around Moon's far side (below → right → above)
       const p = (t - OUTBOUND_END) / (FLYBY_END - OUTBOUND_END);
-      const angle = flybyStartAngle + p * (flybyEndAngle - flybyStartAngle);
+      // Clockwise: start angle > end angle, interpolate through the right side
+      const angle = flybyStartAngle + p * (flybyEndAngle + Math.PI * 2 - flybyStartAngle);
       x = moonX + Math.cos(angle) * flybyR;
       y = moonY + Math.sin(angle) * flybyR;
     } else {
-      // RETURN: flyby exit point → Earth (lower arc)
+      // RETURN: Moon (above) → cross DOWN at midpoint → Earth from below
       const p = (t - FLYBY_END) / (1.0 - FLYBY_END);
-      const p0x = flybyExitX, p0y = flybyExitY;
-      const p1x = earthX + span * 0.6, p1y = flybyExitY + arcHeight * 0.3;
-      const p2x = earthX + span * 0.25, p2y = earthY + arcHeight;
-      const p3x = earthX + earthR + 5, p3y = earthY + 10;
+      const p0x = flybyExitX, p0y = flybyExitY;                   // depart Moon from above
+      const p1x = crossX + span * 0.15, p1y = moonY + arcHeight * 0.5; // come down toward crossing
+      const p2x = crossX - span * 0.08, p2y = earthY - arcHeight; // swing under after crossing
+      const p3x = earthX + earthR + 5, p3y = earthY - 15;        // arrive Earth slightly above center
       x = Math.pow(1-p,3)*p0x + 3*Math.pow(1-p,2)*p*p1x + 3*(1-p)*p*p*p2x + p*p*p*p3x;
       y = Math.pow(1-p,3)*p0y + 3*Math.pow(1-p,2)*p*p1y + 3*(1-p)*p*p*p2y + p*p*p*p3y;
     }
