@@ -2301,56 +2301,49 @@ function drawMap(timestamp) {
   const FLYBY_END = 0.60;
 
   // FIGURE-8 FREE-RETURN TRAJECTORY
-  // On our map: Earth=left, Moon=right. "Behind Moon" = further right (+X).
-  //
-  // Outbound: top of Earth → arcs above → approaches Moon from upper-left
-  // Flyby: passes Moon on the LEFT, swings BEHIND (right of Moon), exits lower-left
-  //   Arc must pass through angle=0 (right side of Moon = far side)
-  //   Entry: angle ≈ 2.5 rad (upper-left), sweep clockwise to ≈ 3.8 rad (lower-left)
-  //   But we go the LONG way around through 0 (right/far side)
-  // Return: lower-left of Moon → arcs below → bottom of Earth
+  // Smooth elliptical flyby behind Moon, crossing paths mid-transit
   const span = moonX - earthX;
-  const arcHeight = span * 0.22;
+  const arcHeight = span * 0.20;
 
-  // Flyby: enter upper-left, go clockwise through far side (right), exit lower-left
-  // Upper-left of Moon = angle ~2.4 rad (≈140°), lower-left = ~3.9 rad (≈220°)
-  // We sweep the LONG way: 2.4 → 1.5 → 0 → -1.5 → -2.4 (through the right side)
-  const flybyEntryAngle = Math.PI - 0.6;      // ~2.54 rad, upper-left
-  const flybyExitAngle = -(Math.PI - 0.6);    // ~-2.54 rad, lower-left
-  // Sweep clockwise (decreasing angle) the long way: entry → 0 → exit
-  // Total sweep = 2π - (entry - exit short path) going through 0
-  const flybyEntryX = moonX + Math.cos(flybyEntryAngle) * flybyR;
-  const flybyEntryY = moonY + Math.sin(flybyEntryAngle) * flybyR;
-  const flybyExitX = moonX + Math.cos(flybyExitAngle) * flybyR;
-  const flybyExitY = moonY + Math.sin(flybyExitAngle) * flybyR;
+  // Elliptical flyby: wider behind Moon (Rx) than tall (Ry) for smooth curvature
+  const flybyRx = flybyR * 1.4;  // extends further behind Moon
+  const flybyRy = flybyR * 0.7;  // narrower vertically = smoother entry/exit
+
+  // Entry/exit angles — wider = gentler tangent at connection points
+  const flybyEntryAngle = Math.PI - 0.45;    // ~2.69 rad, approach almost from left
+  const flybyExitAngle = -(Math.PI - 0.45);  // ~-2.69 rad, depart almost to left
+  const totalSweep = flybyEntryAngle - flybyExitAngle; // ~5.38 rad clockwise through right
+
+  // Compute exact connection points on the ellipse
+  const flybyEntryX = moonX + Math.cos(flybyEntryAngle) * flybyRx;
+  const flybyEntryY = moonY + Math.sin(flybyEntryAngle) * flybyRy;
+  const flybyExitX = moonX + Math.cos(flybyExitAngle) * flybyRx;
+  const flybyExitY = moonY + Math.sin(flybyExitAngle) * flybyRy;
 
   for (let i = 0; i <= steps; i++) {
     const t = i / steps;
     let x, y;
     if (t < OUTBOUND_END) {
-      // OUTBOUND: top of Earth → arc above → Moon upper-left
+      // OUTBOUND: top of Earth → arc above → Moon entry point
       const p = t / OUTBOUND_END;
       const p0x = earthX, p0y = earthY - earthR - 5;
-      const p1x = earthX + span * 0.25, p1y = earthY - arcHeight * 1.4;
-      const p2x = earthX + span * 0.65, p2y = moonY - arcHeight * 1.0;
+      const p1x = earthX + span * 0.28, p1y = earthY - arcHeight * 1.5;
+      const p2x = earthX + span * 0.62, p2y = flybyEntryY - arcHeight * 0.6;
       const p3x = flybyEntryX, p3y = flybyEntryY;
       x = Math.pow(1-p,3)*p0x + 3*Math.pow(1-p,2)*p*p1x + 3*(1-p)*p*p*p2x + p*p*p*p3x;
       y = Math.pow(1-p,3)*p0y + 3*Math.pow(1-p,2)*p*p1y + 3*(1-p)*p*p*p2y + p*p*p*p3y;
     } else if (t < FLYBY_END) {
-      // FLYBY: clockwise from upper-left, around RIGHT (far side), to lower-left
+      // FLYBY: elliptical arc clockwise around far side of Moon
       const p = (t - OUTBOUND_END) / (FLYBY_END - OUTBOUND_END);
-      // Sweep clockwise: subtract from entry angle, going through 0 (far side)
-      // Total clockwise sweep from entry to exit through far side
-      const totalSweep = flybyEntryAngle - flybyExitAngle; // positive, ~5.08 rad
       const angle = flybyEntryAngle - p * totalSweep;
-      x = moonX + Math.cos(angle) * flybyR;
-      y = moonY + Math.sin(angle) * flybyR;
+      x = moonX + Math.cos(angle) * flybyRx;
+      y = moonY + Math.sin(angle) * flybyRy;
     } else {
-      // RETURN: Moon lower-left → arc below → bottom of Earth
+      // RETURN: Moon exit point → arc below → bottom of Earth
       const p = (t - FLYBY_END) / (1.0 - FLYBY_END);
       const p0x = flybyExitX, p0y = flybyExitY;
-      const p1x = earthX + span * 0.65, p1y = moonY + arcHeight * 1.0;
-      const p2x = earthX + span * 0.25, p2y = earthY + arcHeight * 1.4;
+      const p1x = earthX + span * 0.62, p1y = flybyExitY + arcHeight * 0.6;
+      const p2x = earthX + span * 0.28, p2y = earthY + arcHeight * 1.5;
       const p3x = earthX, p3y = earthY + earthR + 5;
       x = Math.pow(1-p,3)*p0x + 3*Math.pow(1-p,2)*p*p1x + 3*(1-p)*p*p*p2x + p*p*p*p3x;
       y = Math.pow(1-p,3)*p0y + 3*Math.pow(1-p,2)*p*p1y + 3*(1-p)*p*p*p2y + p*p*p*p3y;
