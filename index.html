@@ -2351,10 +2351,33 @@ function drawMap(timestamp) {
     trajectoryPoints.push({ x, y });
   }
 
-  // Planned path (dashed gold)
-  ctx.beginPath(); ctx.strokeStyle = 'rgba(212,168,67,0.2)'; ctx.lineWidth = 1; ctx.setLineDash([4,4]);
-  trajectoryPoints.forEach((p,i) => i === 0 ? ctx.moveTo(p.x,p.y) : ctx.lineTo(p.x,p.y));
-  ctx.stroke(); ctx.setLineDash([]);
+  // Helper: draw smooth curve through points using quadratic bezier midpoints
+  function drawSmoothPath(points, startIdx, endIdx) {
+    if (endIdx - startIdx < 2) {
+      ctx.moveTo(points[startIdx].x, points[startIdx].y);
+      for (let i = startIdx + 1; i <= endIdx; i++) ctx.lineTo(points[i].x, points[i].y);
+      return;
+    }
+    ctx.moveTo(points[startIdx].x, points[startIdx].y);
+    for (let i = startIdx + 1; i < endIdx; i++) {
+      const curr = points[i];
+      const next = points[i + 1];
+      const midX = (curr.x + next.x) / 2;
+      const midY = (curr.y + next.y) / 2;
+      ctx.quadraticCurveTo(curr.x, curr.y, midX, midY);
+    }
+    const last = points[endIdx];
+    ctx.lineTo(last.x, last.y);
+  }
+
+  // Planned path — full figure-8 (dashed, dim)
+  ctx.beginPath();
+  drawSmoothPath(trajectoryPoints, 0, steps);
+  ctx.strokeStyle = 'rgba(212,168,67,0.15)';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([6, 4]);
+  ctx.stroke();
+  ctx.setLineDash([]);
 
   // Compute Orion's position on the trajectory curve from real range data
   let orionPos;
@@ -2403,15 +2426,16 @@ function drawMap(timestamp) {
   }
   if (!orionPos) orionPos = trajectoryPoints[0];
 
-  // Completed Earth orbits — staggered ellipses showing the ~1.5 orbits before TLI
+  // Completed voyage — single continuous smooth green line
   if (!isInEarthOrbit) {
-    const orbitCount = 3; // parking orbit + perigee raise + pre-TLI orbit
+    // 1. Draw completed Earth orbits (staggered, same weight)
+    const orbitCount = 3;
     for (let o = 0; o < orbitCount; o++) {
-      const offset = o * 3; // stagger each orbit slightly outward
-      const fade = 0.15 + (o / orbitCount) * 0.25; // inner orbits dimmer
+      const offset = o * 2.5;
+      const fade = 0.2 + (o / orbitCount) * 0.2;
       ctx.save();
       ctx.translate(ellipseCenterX, earthY);
-      ctx.rotate(ellipseTilt + o * 0.05); // slight tilt variation
+      ctx.rotate(ellipseTilt + o * 0.04);
       ctx.beginPath();
       ctx.ellipse(0, 0, ellipseRx + offset, ellipseRy + offset * 0.6, 0, 0, Math.PI * 2);
       ctx.restore();
@@ -2420,15 +2444,13 @@ function drawMap(timestamp) {
       ctx.stroke();
     }
 
-    // Green traveled trajectory from orbit departure to Orion's current position
+    // 2. Draw traveled trajectory as one smooth green line
     if (orionCurveIdx > 0) {
-      ctx.beginPath(); ctx.strokeStyle = 'rgba(51,255,51,0.6)'; ctx.lineWidth = 2;
-      ctx.shadowColor = 'rgba(51,255,51,0.4)'; ctx.shadowBlur = 6;
-      for (let i = 0; i <= orionCurveIdx; i++) {
-        const pt = trajectoryPoints[i];
-        i === 0 ? ctx.moveTo(pt.x, pt.y) : ctx.lineTo(pt.x, pt.y);
-      }
-      ctx.stroke(); ctx.shadowBlur = 0;
+      ctx.beginPath();
+      drawSmoothPath(trajectoryPoints, 0, orionCurveIdx);
+      ctx.strokeStyle = 'rgba(51,255,51,0.65)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
     }
   }
 
